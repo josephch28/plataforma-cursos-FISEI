@@ -1,8 +1,20 @@
 // src/modules/cursos/FormCurso.jsx
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import Select from 'react-select';
 import { API } from '../../services/api';
+import { useNavigate } from 'react-router-dom';
 
 const isTenDigits = (v) => /^[0-9]{10}$/.test(v || '');
+
+function toDateInputValue(date) {
+  if (!date) return '';
+  // Si ya está en formato yyyy-MM-dd, regresa igual
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
+  // Si es formato ISO, conviértelo
+  const d = new Date(date);
+  const pad = n => n < 10 ? '0' + n : n;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 
 export default function FormCurso({ initial = {}, onSaved, auth }) {
   const [data, setData] = useState({
@@ -17,11 +29,24 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
     publico_objetivo: initial.publico_objetivo || '',
     nota_aprobacion: initial.nota_aprobacion ?? 7,
     requiere_asistencia: initial.requiere_asistencia ?? true,
-    fecha_inicio: initial.fecha_inicio || '',
-    fecha_fin: initial.fecha_fin || ''
+    fecha_inicio: toDateInputValue(initial.fecha_inicio),
+    fecha_fin: toDateInputValue(initial.fecha_fin)
   });
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
+  const [usuarios, setUsuarios] = useState([]);
+  const [mensaje, setMensaje] = useState(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Carga los usuarios para el autocompletado
+    API.listUsuarios().then(setUsuarios);
+  }, []);
+
+  const usuarioOptions = usuarios.map(u => ({
+    value: u.cedula,
+    label: `${u.cedula} - ${u.nombre} ${u.apellido}`
+  }));
 
   const validate = () => {
     const e = {};
@@ -49,20 +74,39 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
 
   const save = async (ev) => {
     ev.preventDefault();
-    const e = validate();
-    setErrors(e);
-    if (Object.keys(e).length) return;
     setBusy(true);
+    setErrors({});
     try {
-      const payload = { ...data, horas: data.horas === '' ? null : Number(data.horas) };
-      if (initial.id_curso) await API.updateCurso(initial.id_curso, payload, auth);
-      else await API.createCurso(payload, auth);
-      onSaved && onSaved();
-    } catch (err) {
-      alert(err?.message || 'Error al guardar');
-    } finally {
-      setBusy(false);
+      const e = validate();
+      setErrors(e);
+      if (Object.keys(e).length) return;
+      const payload = {
+        ...data,
+        cedula_admin: typeof data.cedula_admin === 'object' ? data.cedula_admin.value : data.cedula_admin,
+        cedula_responsable: typeof data.cedula_responsable === 'object' ? data.cedula_responsable.value : data.cedula_responsable,
+        horas: data.horas === '' ? null : Number(data.horas),
+        nota_aprobacion: Number(data.nota_aprobacion),
+        requiere_asistencia: Boolean(data.requiere_asistencia), 
+        es_pagado: Boolean(data.es_pagado), 
+        fecha_inicio: toDateInputValue(data.fecha_inicio),
+        fecha_fin: toDateInputValue(data.fecha_fin)
+      };
+      if (initial.id_curso) {
+        await API.updateCurso(initial.id_curso, payload, auth);
+        setMensaje({ tipo: 'exito', texto: 'Curso actualizado correctamente.' });
+      } else {
+        await API.createCurso(payload, auth);
+        setMensaje({ tipo: 'exito', texto: 'Curso creado correctamente.' });
+        // Limpiar campos si quieres
+      }
+      setTimeout(() => {
+        setMensaje(null);
+        if (onSaved) onSaved();
+      }, 1200);
+    } catch {
+      setMensaje({ tipo: 'error', texto: 'Error al guardar el curso. Intenta nuevamente.' });
     }
+    setBusy(false);
   };
 
   const inputClass =
@@ -74,10 +118,13 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         <div>
           <label className={labelClass}>Cédula Admin</label>
-          <input
-            className={inputClass}
-            value={data.cedula_admin}
-            onChange={(e) => setData({ ...data, cedula_admin: e.target.value })}
+          <Select
+            options={usuarioOptions}
+            value={usuarioOptions.find(o => o.value === data.cedula_admin)}
+            onChange={opt => setData(d => ({ ...d, cedula_admin: opt?.value || '' }))}
+            placeholder="Buscar administrador..."
+            isClearable
+            className="mb-4"
           />
           {errors.cedula_admin && (
             <p className="text-red-600 text-sm mt-1">{errors.cedula_admin}</p>
@@ -85,10 +132,13 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
         </div>
         <div>
           <label className={labelClass}>Cédula Responsable</label>
-          <input
-            className={inputClass}
-            value={data.cedula_responsable}
-            onChange={(e) => setData({ ...data, cedula_responsable: e.target.value })}
+          <Select
+            options={usuarioOptions}
+            value={usuarioOptions.find(o => o.value === data.cedula_responsable)}
+            onChange={opt => setData(d => ({ ...d, cedula_responsable: opt?.value || '' }))}
+            placeholder="Buscar responsable..."
+            isClearable
+            className="mb-4"
           />
           {errors.cedula_responsable && (
             <p className="text-red-600 text-sm mt-1">{errors.cedula_responsable}</p>
@@ -166,7 +216,7 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
           <input
             type="date"
             className={inputClass}
-            value={data.fecha_inicio}
+            value={toDateInputValue(data.fecha_inicio)}
             onChange={(e) => setData({ ...data, fecha_inicio: e.target.value })}
           />
         </div>
@@ -175,7 +225,7 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
           <input
             type="date"
             className={inputClass}
-            value={data.fecha_fin}
+            value={toDateInputValue(data.fecha_fin)}
             onChange={(e) => setData({ ...data, fecha_fin: e.target.value })}
           />
           {errors.fecha_fin && <p className="text-red-600 text-sm mt-1">{errors.fecha_fin}</p>}
@@ -210,23 +260,33 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
         </div>
       </div>
 
-      <div className="flex gap-3 pt-4">
+      {errors.general && (
+        <div className="mt-4 p-4 rounded-lg bg-red-50 border border-red-300 text-red-600">
+          {errors.general}
+        </div>
+      )}
+
+      {mensaje && (
+        <div className={`mb-4 p-3 rounded ${mensaje.tipo === 'exito' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+          {mensaje.texto}
+        </div>
+      )}
+
+      <div className="pt-2 flex gap-2 mt-8">
         <button
-          disabled={busy}
           type="submit"
-          className="px-6 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition"
+          disabled={busy}
+          className="px-6 py-2.5 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition disabled:opacity-50"
         >
-          {initial.id_curso ? 'Actualizar' : 'Guardar'}
+          {busy ? 'Guardando...' : 'Guardar'}
         </button>
-        {initial.id_curso && (
-          <button
-            type="button"
-            onClick={() => onSaved && onSaved()}
-            className="px-6 py-2.5 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition"
-          >
-            Cancelar
-          </button>
-        )}
+        <button
+          type="button"
+          className="px-6 py-2.5 rounded-lg bg-gray-200 text-gray-700 font-medium hover:bg-gray-300 transition"
+          onClick={() => navigate('/cursos')}
+        >
+          Volver
+        </button>
       </div>
     </form>
   );

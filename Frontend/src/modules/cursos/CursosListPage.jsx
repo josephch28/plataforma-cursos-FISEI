@@ -1,5 +1,6 @@
-// src/modules/cursos/CursosListPage.jsx
+// src/modules/cursos/CursosListPage.jsx - CON TABS
 import { useState } from 'react';
+import AppLayout from '../../layouts/AppLayout';
 import TablaCursos from './TablaCursos';
 import { useNavigate } from 'react-router-dom';
 
@@ -8,7 +9,7 @@ export default function CursosListPage({ auth }) {
   const [tab, setTab] = useState('activos');
 
   return (
-    <div>
+    <AppLayout active="cursos">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-semibold text-gray-900">Cursos</h1>
         <button
@@ -54,6 +55,6 @@ export default function CursosListPage({ auth }) {
           showInactive={tab === 'desactivados'}
         />
       </div>
-    </div>
+    </AppLayout>
   );
 }

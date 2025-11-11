@@ -8,10 +8,6 @@ app.use(express.json());
 
 app.use('/api/cursos', require('./routes/cursos.routes'));
 app.use('/api/cursos', require('./routes/encargados.routes'));
-const inscripcionRoutes = require('./routes/inscripcion.routes');
-app.use('/api/inscripciones', inscripcionRoutes);
-const usuariosRoutes = require('./routes/usuarios.routes');
-app.use('/api/usuarios', usuariosRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);

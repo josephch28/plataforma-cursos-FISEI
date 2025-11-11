@@ -1,23 +1,23 @@
-// src/modules/cursos/CursosEditPage.jsx
+// src/modules/evaluaciones/EvaluacionesEditPage.jsx
 import { useEffect, useState } from 'react';
-import FormCurso from './FormCurso';
 import { useNavigate, useParams } from 'react-router-dom';
 import { API } from '../../services/api';
+import FormEvaluacion from './FormEvaluacion';
 
-export default function CursosEditPage({ auth }) {
+export default function EvaluacionesEditPage({ auth }) {
   const { id } = useParams();
   const nav = useNavigate();
-  const [curso, setCurso] = useState(null);
+  const [evaluacion, setEvaluacion] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const data = await API.getCurso(id);
-        setCurso(data);
+        const data = await API.getInscripcion(id);
+        setEvaluacion(data);
       } catch {
-        alert('Error al cargar curso');
-        nav('/cursos');
+        alert('Error al cargar evaluación');
+        nav('/evaluaciones');
       } finally {
         setLoading(false);
       }
@@ -35,9 +35,9 @@ export default function CursosEditPage({ auth }) {
 
   return (
     <div>
-      <h1 className="text-3xl font-semibold text-gray-900 mb-6">Editar curso</h1>
+      <h1 className="text-3xl font-semibold text-gray-900 mb-6">Editar evaluación</h1>
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <FormCurso initial={curso} auth={auth} onSaved={() => nav('/cursos')} />
+        <FormEvaluacion initial={evaluacion || {}} auth={auth} onSaved={() => nav('/evaluaciones')} />
       </div>
     </div>
   );

@@ -11,7 +11,7 @@ exports.createCurso = (req) => {
   if (!b.nombre || b.nombre.length < 3) errs.push('nombre es requerido (>=3)');
   if (b.horas != null && (!Number.isInteger(b.horas) || b.horas <= 0)) errs.push('horas debe ser entero positivo');
   if (b.nota_aprobacion != null && (b.nota_aprobacion < 0 || b.nota_aprobacion > 10)) errs.push('nota_aprobacion 0..10');
-  if (b.requiere_asistencia != null && typeof b.requiere_asistencia !== 'boolean') errs.push('requiere_asistencia booleano');
+  if (b.requiere_asistencia != null && typeof b.requiere_asistencia !== 'boolean' && b.requiere_asistencia !== 'true' && b.requiere_asistencia !== 'false') errs.push('requiere_asistencia booleano');
   if (b.fecha_inicio && b.fecha_fin && new Date(b.fecha_inicio) > new Date(b.fecha_fin)) errs.push('fecha_inicio <= fecha_fin');
   return errs.length ? { error: errs } : { value: b };
 };

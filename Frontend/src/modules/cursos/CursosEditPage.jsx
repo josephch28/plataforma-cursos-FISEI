@@ -1,5 +1,6 @@
 // src/modules/cursos/CursosEditPage.jsx
 import { useEffect, useState } from 'react';
+import AppLayout from '../../layouts/AppLayout';  // ✅ CORREGIDO
 import FormCurso from './FormCurso';
 import { useNavigate, useParams } from 'react-router-dom';
 import { API } from '../../services/api';
@@ -15,7 +16,7 @@ export default function CursosEditPage({ auth }) {
       try {
         const data = await API.getCurso(id);
         setCurso(data);
-      } catch {
+      } catch (error) {
         alert('Error al cargar curso');
         nav('/cursos');
       } finally {
@@ -23,22 +24,24 @@ export default function CursosEditPage({ auth }) {
       }
     };
     load();
-  }, [id, nav]);
+  }, [id]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <p className="text-gray-500">Cargando...</p>
-      </div>
+      <AppLayout active="cursos">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-gray-500">Cargando...</p>
+        </div>
+      </AppLayout>
     );
   }
 
   return (
-    <div>
+    <AppLayout active="cursos">
       <h1 className="text-3xl font-semibold text-gray-900 mb-6">Editar curso</h1>
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <FormCurso initial={curso} auth={auth} onSaved={() => nav('/cursos')} />
       </div>
-    </div>
+    </AppLayout>
   );
 }

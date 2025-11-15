@@ -6,6 +6,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use('/api/auth', require('./routes/auth.routes')); // Rutas de Login/Registro
 app.use('/api/cursos', require('./routes/cursos.routes'));
 app.use('/api/cursos', require('./routes/encargados.routes'));
 const inscripcionRoutes = require('./routes/inscripcion.routes');

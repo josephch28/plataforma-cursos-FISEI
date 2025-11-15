@@ -1,35 +1,36 @@
 // Backend/src/controllers/usuarios.controller.js - MODIFICADO
 
 const pool = require('../db');
+const bcrypt = require('bcryptjs');
 
 const sanitizeUser = (user) => {
-    if (user && user.password) {
-        delete user.password;
-    }
-    return user;
+  if (user && user.password) {
+    delete user.password;
+  }
+  return user;
 };
 
 exports.list = async (req, res) => {
   try {
     const { inactivo } = req.query;
-    
+
     // Determinar si buscamos usuarios INACTIVOS.
     // req.query.inactivo será el string 'true' o 'false'.
-    const searchInactive = inactivo === 'true'; 
-    
+    const searchInactive = inactivo === 'true';
+
     // En MySQL, TRUE es 1 y FALSE es 0. 
     // Si searchInactive es TRUE, queremos activo = 0 (usuarios inactivos).
     // Si searchInactive es FALSE, queremos activo = 1 (usuarios activos).
-    const activeValue = searchInactive ? 0 : 1; 
+    const activeValue = searchInactive ? 0 : 1;
 
     // Usamos un placeholder (?) para pasar el valor numérico, 
     // garantizando que MySQL filtre correctamente.
     const [rows] = await pool.query(
       'SELECT cedula, nombre, apellido, email, rol, activo FROM usuario WHERE activo = ?',
       [activeValue]
-    ); 
-    
-    res.json(rows.map(sanitizeUser)); 
+    );
+
+    res.json(rows.map(sanitizeUser));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener usuarios' });
@@ -53,11 +54,15 @@ exports.create = async (req, res) => {
     const rolNormalized = (rol || '').toLowerCase();
 
     // NOTA: El password DEBE ser hasheado con bcrypt en producción.
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
     await pool.query(
       'INSERT INTO usuario (cedula, nombre, apellido, email, rol, password, activo) VALUES (?, ?, ?, ?, ?, ?, 1)',
-      [cedula, nombre, apellido, email, rolNormalized, password]
+      [cedula, nombre, apellido, email, rolNormalized, passwordHash] // <-- USA passwordHash
     );
-    
+
     const [row] = await pool.query('SELECT cedula, nombre, apellido, email, rol, activo FROM usuario WHERE cedula = ?', [cedula]);
     res.status(201).json(sanitizeUser(row[0]));
   } catch (error) {
@@ -72,25 +77,35 @@ exports.update = async (req, res) => {
   try {
     const b = req.validated;
     const { cedula } = req.params;
-    
+
     const fields = [];
     const params = [];
-    
+
     for (const k in b) {
       if (k === 'rol' && typeof b[k] === 'string') {
         fields.push(`${k} = ?`);
         params.push(b[k].toLowerCase());
         continue;
       }
-      fields.push(`${k} = ?`);
-      params.push(b[k]);
+
+      // --- INICIO DE CAMBIO ---
+      if (k === 'password') {
+        // Si se incluye el password, hashearlo
+        const salt = await bcrypt.genSalt(10);
+        const passwordHash = await bcrypt.hash(b[k], salt);
+        fields.push(`${k} = ?`);
+        params.push(passwordHash);
+      } else {
+        // Para todos los demás campos
+        fields.push(`${k} = ?`);
+        params.push(b[k]);
+      }
     }
-    
     if (!fields.length) return res.status(400).json({ message: 'Nada para actualizar' });
-    
+
     params.push(cedula);
     await pool.query(`UPDATE usuario SET ${fields.join(', ')} WHERE cedula = ?`, params);
-    
+
     const [row] = await pool.query('SELECT cedula, nombre, apellido, email, rol, activo FROM usuario WHERE cedula = ?', [cedula]);
     res.json(sanitizeUser(row[0]));
   } catch (error) {

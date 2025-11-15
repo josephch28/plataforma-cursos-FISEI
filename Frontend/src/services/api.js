@@ -1,9 +1,70 @@
 // src/services/api.js
+
+// Maneja respuestas JSON o texto y arroja errores legibles cuando la respuesta no es JSON.
+const handleResponse = async (r) => {
+  if (r.ok) {
+    if (r.status === 204) return true;
+    const ct = r.headers.get('content-type') || '';
+    if (ct.includes('application/json')) return await r.json();
+    return await r.text();
+  }
+
+  // Intentar parsear JSON de error, si no es JSON devolver texto plano
+  try {
+    const body = await r.json();
+    throw body;
+  } catch (e) {
+    const text = await r.text();
+    throw new Error(text || `HTTP ${r.status}`);
+  }
+};
+
 export const API = {
+  // Usuarios API calls (Agregar al final de las funciones)
+  async listUsuarios(params = {}) {
+  const query = new URLSearchParams(params).toString();
+  const res = await fetch(`/api/usuarios${query ? `?${query}` : ''}`);
+  return await handleResponse(res);
+  },
+  async getUsuario(cedula, auth) {
+    const r = await fetch(`/api/usuarios/${cedula}`, {
+        headers: { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula }
+    });
+    return await handleResponse(r);
+  },
+  async createUsuario(data, auth) {
+    const r = await fetch(`/api/usuarios`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula },
+      body: JSON.stringify(data)
+    });
+    return await handleResponse(r);
+  },
+  async updateUsuario(cedula, data, auth) {
+    const r = await fetch(`/api/usuarios/${cedula}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula },
+      body: JSON.stringify(data)
+    });
+    return await handleResponse(r);
+  },
+  async deleteUsuario(cedula, auth) {
+  const r = await fetch(`/api/usuarios/${cedula}`, {
+    method: 'DELETE',
+    headers: { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula }
+  });
+  return await handleResponse(r);
+  },
+  async activateUsuario(cedula, auth) { // 🆕 NUEVO
+    const r = await fetch(`/api/usuarios/${cedula}/activar`, {
+      method: 'PUT',
+      headers: { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula }
+    });
+    return await handleResponse(r);
+  },
   async getCurso(id) {
     const r = await fetch(`/api/cursos/${id}`);
-    if (!r.ok) throw await r.json();
-    return r.json();
+    return await handleResponse(r);
   },
   async createCurso(data, auth) {
     const r = await fetch(`/api/cursos`, {
@@ -11,8 +72,7 @@ export const API = {
       headers: { 'Content-Type':'application/json', 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula },
       body: JSON.stringify(data)
     });
-    if (!r.ok) throw await r.json();
-    return r.json();
+    return await handleResponse(r);
   },
   async updateCurso(id, data, auth) {
     const r = await fetch(`/api/cursos/${id}`, {
@@ -20,29 +80,25 @@ export const API = {
       headers: { 'Content-Type':'application/json', 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula },
       body: JSON.stringify(data)
     });
-    if (!r.ok) throw await r.json();
-    return r.json();
+    return await handleResponse(r);
   },
   async deleteCurso(id, auth) {
     const r = await fetch(`/api/cursos/${id}`, {
       method: 'DELETE',
       headers: { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula }
     });
-    if (!r.ok && r.status !== 204) throw await r.json();
-    return true;
+    return await handleResponse(r);
   },
   async activateCurso(id, auth) {
     const r = await fetch(`/api/cursos/${id}/activar`, {
       method: 'PUT',
       headers: { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula }
     });
-    if (!r.ok) throw await r.json();
-    return r.json();
+    return await handleResponse(r);
   },
   async listEncargados(id) {
     const r = await fetch(`/api/cursos/${id}/encargados`);
-    if (!r.ok) throw await r.json();
-    return r.json();
+    return await handleResponse(r);
   },
   async addEncargado(id, cedula, auth) {
     const r = await fetch(`/api/cursos/${id}/encargados`, {
@@ -50,16 +106,14 @@ export const API = {
       headers: { 'Content-Type':'application/json', 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula },
       body: JSON.stringify({ cedula_encargado: cedula })
     });
-    if (!r.ok) throw await r.json();
-    return r.json();
+    return await handleResponse(r);
   },
   async removeEncargado(id, cedula, auth) {
     const r = await fetch(`/api/cursos/${id}/encargados/${cedula}`, {
       method: 'DELETE',
       headers: { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula }
     });
-    if (!r.ok && r.status !== 204) throw await r.json();
-    return true;
+    return await handleResponse(r);
   },
 
   // Inscripciones
@@ -113,9 +167,7 @@ export const API = {
     if (!res.ok) throw new Error('Error al obtener cursos');
     return await res.json();
   },
-  async listUsuarios() {
-    const res = await fetch('/api/usuarios');
-    if (!res.ok) throw new Error('Error al obtener usuarios');
-    return await res.json();
-  },
+  // `listUsuarios` definido arriba (con `params`) maneja la obtención
+  // de usuarios y acepta filtros. Eliminamos la definición duplicada
+  // para evitar sobrescribirla.
 };

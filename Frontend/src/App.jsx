@@ -6,6 +6,9 @@ import CursosEditPage from './modules/cursos/CursosEditPage';
 import EvaluacionesListPage from './modules/evaluaciones/EvaluacionesListPage';
 import EvaluacionesCreatePage from './modules/evaluaciones/EvaluacionesCreatePage';
 import EvaluacionesEditPage from './modules/evaluaciones/EvaluacionesEditPage';
+import UsuariosListPage from './modules/usuarios/UsuariosListPage'; // NUEVO
+import UsuariosCreatePage from './modules/usuarios/UsuariosCreatePage'; // NUEVO
+import UsuariosEditPage from './modules/usuarios/UsuariosEditPage'; // NUEVO
 import AppLayout from './layouts/AppLayout';
 import './index.css';
 import DashboardPage from './modules/dashboard/DashboardPage';
@@ -24,6 +27,9 @@ export default function App() {
           <Route path="/evaluaciones" element={<EvaluacionesListPage auth={auth} />} />
           <Route path="/evaluaciones/nueva" element={<EvaluacionesCreatePage auth={auth} />} />
           <Route path="/evaluaciones/:id/editar" element={<EvaluacionesEditPage auth={auth} />} />
+          <Route path="/usuarios" element={<UsuariosListPage auth={auth} />} />
+          <Route path="/usuarios/nuevo" element={<UsuariosCreatePage auth={auth} />} />
+          <Route path="/usuarios/:cedula/editar" element={<UsuariosEditPage auth={auth} />} />
           {/* Agrega más rutas aquí cuando implementes Dashboard, Usuarios, Inscripciones */}
         </Route>
       </Routes>

@@ -1,70 +1,42 @@
 // src/services/api.js
-
-// Maneja respuestas JSON o texto y arroja errores legibles cuando la respuesta no es JSON.
-const handleResponse = async (r) => {
-  if (r.ok) {
-    if (r.status === 204) return true;
-    const ct = r.headers.get('content-type') || '';
-    if (ct.includes('application/json')) return await r.json();
-    return await r.text();
-  }
-
-  // Intentar parsear JSON de error, si no es JSON devolver texto plano
-  try {
-    const body = await r.json();
-    throw body;
-  } catch (e) {
-    const text = await r.text();
-    throw new Error(text || `HTTP ${r.status}`);
-  }
-};
-
 export const API = {
-  // Usuarios API calls (Agregar al final de las funciones)
-  async listUsuarios(params = {}) {
-  const query = new URLSearchParams(params).toString();
-  const res = await fetch(`/api/usuarios${query ? `?${query}` : ''}`);
-  return await handleResponse(res);
-  },
-  async getUsuario(cedula, auth) {
-    const r = await fetch(`/api/usuarios/${cedula}`, {
-        headers: { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula }
-    });
-    return await handleResponse(r);
-  },
-  async createUsuario(data, auth) {
-    const r = await fetch(`/api/usuarios`, {
+  async login(email, password) {
+    const r = await fetch(`/api/auth/login`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula },
-      body: JSON.stringify(data)
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
     });
-    return await handleResponse(r);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw { response: { data } };
+    return { data };
   },
-  async updateUsuario(cedula, data, auth) {
-    const r = await fetch(`/api/usuarios/${cedula}`, {
+  async post(path, body) {
+    const url = path.startsWith('/') ? `/api${path}` : path;
+    const r = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw { response: { data } };
+    return { data };
+  },
+  async put(path, body) {
+    const url = path.startsWith('/') ? `/api${path}` : path;
+    const r = await fetch(url, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula },
-      body: JSON.stringify(data)
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
     });
-    return await handleResponse(r);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw { response: { data } };
+    return { data };
   },
-  async deleteUsuario(cedula, auth) {
-  const r = await fetch(`/api/usuarios/${cedula}`, {
-    method: 'DELETE',
-    headers: { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula }
-  });
-  return await handleResponse(r);
-  },
-  async activateUsuario(cedula, auth) { // 🆕 NUEVO
-    const r = await fetch(`/api/usuarios/${cedula}/activar`, {
-      method: 'PUT',
-      headers: { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula }
-    });
-    return await handleResponse(r);
-  },
+
   async getCurso(id) {
     const r = await fetch(`/api/cursos/${id}`);
-    return await handleResponse(r);
+    if (!r.ok) throw await r.json();
+    return r.json();
   },
   async createCurso(data, auth) {
     const r = await fetch(`/api/cursos`, {
@@ -72,7 +44,8 @@ export const API = {
       headers: { 'Content-Type':'application/json', 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula },
       body: JSON.stringify(data)
     });
-    return await handleResponse(r);
+    if (!r.ok) throw await r.json();
+    return r.json();
   },
   async updateCurso(id, data, auth) {
     const r = await fetch(`/api/cursos/${id}`, {
@@ -80,25 +53,29 @@ export const API = {
       headers: { 'Content-Type':'application/json', 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula },
       body: JSON.stringify(data)
     });
-    return await handleResponse(r);
+    if (!r.ok) throw await r.json();
+    return r.json();
   },
   async deleteCurso(id, auth) {
     const r = await fetch(`/api/cursos/${id}`, {
       method: 'DELETE',
       headers: { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula }
     });
-    return await handleResponse(r);
+    if (!r.ok && r.status !== 204) throw await r.json();
+    return true;
   },
   async activateCurso(id, auth) {
     const r = await fetch(`/api/cursos/${id}/activar`, {
       method: 'PUT',
       headers: { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula }
     });
-    return await handleResponse(r);
+    if (!r.ok) throw await r.json();
+    return r.json();
   },
   async listEncargados(id) {
     const r = await fetch(`/api/cursos/${id}/encargados`);
-    return await handleResponse(r);
+    if (!r.ok) throw await r.json();
+    return r.json();
   },
   async addEncargado(id, cedula, auth) {
     const r = await fetch(`/api/cursos/${id}/encargados`, {
@@ -106,14 +83,16 @@ export const API = {
       headers: { 'Content-Type':'application/json', 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula },
       body: JSON.stringify({ cedula_encargado: cedula })
     });
-    return await handleResponse(r);
+    if (!r.ok) throw await r.json();
+    return r.json();
   },
   async removeEncargado(id, cedula, auth) {
     const r = await fetch(`/api/cursos/${id}/encargados/${cedula}`, {
       method: 'DELETE',
       headers: { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula }
     });
-    return await handleResponse(r);
+    if (!r.ok && r.status !== 204) throw await r.json();
+    return true;
   },
 
   // Inscripciones
@@ -167,7 +146,17 @@ export const API = {
     if (!res.ok) throw new Error('Error al obtener cursos');
     return await res.json();
   },
-  // `listUsuarios` definido arriba (con `params`) maneja la obtención
-  // de usuarios y acepta filtros. Eliminamos la definición duplicada
-  // para evitar sobrescribirla.
+  async listCursosInscritos(cedulaUsuario) {
+    // Obtener inscripciones del usuario y retornar los cursos asociados
+    const res = await fetch(`/api/inscripciones?cedula_usuario=${cedulaUsuario}`);
+    if (!res.ok) throw new Error('Error al obtener inscripciones');
+    return await res.json();
+  },
+  async listUsuarios() {
+    const res = await fetch('/api/usuarios');
+    if (!res.ok) throw new Error('Error al obtener usuarios');
+    return await res.json();
+  },
 };
+
+export default API;

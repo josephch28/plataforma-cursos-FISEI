@@ -5,7 +5,14 @@ const db = require('../db'); // O usa tu conexión como en cursos
 // Listar inscripciones
 exports.list = async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM inscripcion');
+    const { cedula_usuario } = req.query;
+    let query = 'SELECT i.*, c.nombre as curso_nombre, c.descripcion FROM inscripcion i LEFT JOIN curso c ON i.id_curso = c.id_curso';
+    const params = [];
+    if (cedula_usuario) {
+      query += ' WHERE i.cedula_usuario = ?';
+      params.push(cedula_usuario);
+    }
+    const [rows] = await db.query(query, params);
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: 'Error al obtener inscripciones' });

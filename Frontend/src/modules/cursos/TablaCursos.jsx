@@ -14,7 +14,30 @@ export default function TablaCursos({ onEdit, auth, showInactive = false }) {
   const load = async () => {
     setLoading(true);
     try {
-      const data = await API.listCursos({ q, pag, size, inactivo: showInactive });
+      let data = [];
+      // Si es usuario, solo cargar cursos inscritos; si es admin/responsable, cargar todos
+      if (auth?.rol === 'usuario') {
+        // Cargar inscripciones del usuario (que ya incluyen datos del curso)
+        const inscripciones = await API.post('/inscripciones', {});
+        // En realidad, hacer un GET con query param
+        const res = await fetch(`/api/inscripciones?cedula_usuario=${auth.cedula}`);
+        if (res.ok) {
+          const inscripciones = await res.json();
+          // Mapear inscripciones a formato similar a cursos para que la tabla funcione
+          data = inscripciones.map(ins => ({
+            id_curso: ins.id_curso,
+            nombre: ins.curso_nombre || 'Curso desconocido',
+            tipo: '-',
+            horas: '-',
+            cedula_responsable: '-',
+            fecha_inicio: '-',
+            fecha_fin: '-'
+          }));
+        }
+      } else {
+        // Admin y responsable ven todos los cursos
+        data = await API.listCursos({ q, pag, size, inactivo: showInactive });
+      }
       setRows(data);
     } finally {
       setLoading(false);

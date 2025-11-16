@@ -12,6 +12,7 @@ const inscripcionRoutes = require('./routes/inscripcion.routes');
 app.use('/api/inscripciones', inscripcionRoutes);
 const usuariosRoutes = require('./routes/usuarios.routes');
 app.use('/api/usuarios', usuariosRoutes);
+app.use('/api/reportes', require('./modules/reportes/routes/reportes.routes'));
 
 app.use((err, req, res, next) => {
   console.error(err);

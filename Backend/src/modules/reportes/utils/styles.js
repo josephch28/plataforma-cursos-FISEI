@@ -1,10 +1,29 @@
-const styles = {
-  header: {fontSize: 18, bold: true, alignment: 'center', margin: [0,0,0,10]},
-  subheader: {fontSize: 14, bold: true, margin: [0,10,0,5]},
-  tableHeader: {bold: true, fontSize: 12, color: 'white', fillColor: '#2E86AB'},
-  certificadoTitulo: {fontSize: 28, bold: true, alignment: 'center', margin: [0,50,0,20]},
-  certificadoTexto: {fontSize: 14, alignment: 'center', margin: [0,10,0,10]},
-  footer: {fontSize: 10, alignment: 'center', margin: [0,20,0,0]}
+const colors = {
+  primary: '#003366',
+  secondary: '#0066cc',
+  accent: '#FFD700',
+  text: '#333333',
+  lightGray: '#f5f5f5',
+  white: '#ffffff'
 };
-module.exports = styles;
+
+const fonts = {
+  title: { fontSize: 28, bold: true, color: colors.primary },
+  subtitle: { fontSize: 18, bold: true, color: colors.secondary },
+  header: { fontSize: 16, bold: true, color: colors.white },
+  body: { fontSize: 12, color: colors.text },
+  small: { fontSize: 10, color: colors.text }
+};
+
+const tableStyles = {
+  headerFillColor: colors.primary,
+  evenRowFillColor: colors.lightGray,
+  oddRowFillColor: colors.white
+};
+
+module.exports = {
+  colors,
+  fonts,
+  tableStyles
+};
 

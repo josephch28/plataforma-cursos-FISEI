@@ -9,6 +9,7 @@ import EvaluacionesEditPage from './modules/evaluaciones/EvaluacionesEditPage';
 import UsuariosListPage from './modules/usuarios/UsuariosListPage'; // NUEVO
 import UsuariosCreatePage from './modules/usuarios/UsuariosCreatePage'; // NUEVO
 import UsuariosEditPage from './modules/usuarios/UsuariosEditPage'; // NUEVO
+import ReportesListPage from './modules/reportes/ReportesListPage';
 import AppLayout from './layouts/AppLayout';
 import './index.css';
 import DashboardPage from './modules/dashboard/DashboardPage';
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/usuarios" element={<UsuariosListPage auth={auth} />} />
           <Route path="/usuarios/nuevo" element={<UsuariosCreatePage auth={auth} />} />
           <Route path="/usuarios/:cedula/editar" element={<UsuariosEditPage auth={auth} />} />
+          <Route path="/reportes" element={<ReportesListPage auth={auth} />} />
           {/* Agrega más rutas aquí cuando implementes Dashboard, Usuarios, Inscripciones */}
         </Route>
       </Routes>

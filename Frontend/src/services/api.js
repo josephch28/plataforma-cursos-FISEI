@@ -170,4 +170,48 @@ export const API = {
   // `listUsuarios` definido arriba (con `params`) maneja la obtención
   // de usuarios y acepta filtros. Eliminamos la definición duplicada
   // para evitar sobrescribirla.
+
+  // Reportes
+  async generarCertificado(cursoId, estudianteId) {
+    const r = await fetch(`/api/reportes/certificado/${cursoId}/${estudianteId}`);
+    if (!r.ok) throw new Error('Error al generar certificado');
+    const blob = await r.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `certificado_${estudianteId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    return true;
+  },
+  async generarReportePDF(cursoId) {
+    const r = await fetch(`/api/reportes/curso/${cursoId}`);
+    if (!r.ok) throw new Error('Error al generar reporte');
+    const blob = await r.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reporte_curso_${cursoId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    return true;
+  },
+  async generarReporteExcel(cursoId) {
+    const r = await fetch(`/api/reportes/curso/${cursoId}?formato=excel`);
+    if (!r.ok) throw new Error('Error al generar reporte');
+    const blob = await r.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reporte_curso_${cursoId}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    return true;
+  }
 };

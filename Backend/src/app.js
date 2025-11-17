@@ -6,12 +6,15 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/cursos', require('./routes/cursos.routes'));
 app.use('/api/cursos', require('./routes/encargados.routes'));
 const inscripcionRoutes = require('./routes/inscripcion.routes');
 app.use('/api/inscripciones', inscripcionRoutes);
 const usuariosRoutes = require('./routes/usuarios.routes');
 app.use('/api/usuarios', usuariosRoutes);
+const solicitudesRoutes = require('./routes/solicitudes.routes');
+app.use('/api/solicitudes', solicitudesRoutes);
 
 app.use((err, req, res, next) => {
   console.error(err);

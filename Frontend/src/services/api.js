@@ -167,40 +167,6 @@ export const API = {
     if (!res.ok) throw new Error('Error al obtener cursos');
     return await res.json();
   },
-  // Solicitudes de cambio
-  async listSolicitudes(params = {}) {
-    const query = new URLSearchParams(params).toString();
-    const r = await fetch(`/api/solicitudes${query ? `?${query}` : ''}`);
-    return await handleResponse(r);
-  },
-  async getSolicitud(id) {
-    const r = await fetch(`/api/solicitudes/${id}`);
-    return await handleResponse(r);
-  },
-  async createSolicitud(data) {
-    const r = await fetch(`/api/solicitudes`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    return await handleResponse(r);
-  },
-  async updateSolicitud(id, data) {
-    const r = await fetch(`/api/solicitudes/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data)
-    });
-    return await handleResponse(r);
-  },
-  async deleteSolicitud(id) {
-    const r = await fetch(`/api/solicitudes/${id}`, { method: 'DELETE' });
-    return await handleResponse(r);
-  },
-  async getSolicitudesStats() {
-    const r = await fetch(`/api/solicitudes/stats`);
-    return await handleResponse(r);
-  },
   // `listUsuarios` definido arriba (con `params`) maneja la obtención
   // de usuarios y acepta filtros. Eliminamos la definición duplicada
   // para evitar sobrescribirla.

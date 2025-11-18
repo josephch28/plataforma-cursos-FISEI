@@ -21,21 +21,64 @@ export default function CursosCatalogoPage() {
   const [confirmingId, setConfirmingId] = useState(null);
   const { user } = useAuth();
   const nav = useNavigate();
+  const [q, setQ] = useState('');
+  const [horasFiltro, setHorasFiltro] = useState('');      // '', lt10, b10_20, b20_30, gt30
+  const [tipoFiltro, setTipoFiltro] = useState('');        // '', Curso, Webinar, Taller
+  const [publicoFiltro, setPublicoFiltro] = useState('');  // '', Estudiantes UTA, Personal UTA, Público General
+
+  // 🆕 FUNCIÓN PARA CONSTRUIR PARÁMETROS DE API (REUSADA DE TABLACURSOS.JSX)
+  const buildParams = () => {
+    // inactivo: false asegura que solo vemos cursos activos
+    const params = { q, inactivo: false }; 
+    if (tipoFiltro) params.tipo = tipoFiltro;
+    if (publicoFiltro) params.publico_objetivo = publicoFiltro;
+
+    // Mapear horas a horas_min/horas_max
+    if (horasFiltro === 'lt10') {
+      params.horas_max = 9;
+    } else if (horasFiltro === 'b10_20') {
+      params.horas_min = 10;
+      params.horas_max = 20;
+    } else if (horasFiltro === 'b20_30') {
+      params.horas_min = 20;
+      params.horas_max = 30;
+    } else if (horasFiltro === 'gt30') {
+      params.horas_min = 31;
+    }
+    return params;
+  };
+
+  // 🆕 FUNCIÓN DE CARGA DE DATOS CENTRAL
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const params = buildParams();
+      const [cursosData, cursosUsuario] = await Promise.all([
+        API.listCursos(params).catch(() => []),
+        API.getUserCourses().catch(() => [])
+      ]);
+      
+      setCursos(cursosData);
+      const inscritos = (cursosUsuario || [])
+        .filter(c => c.rol === 'estudiante')
+        .map(c => c.id_curso);
+      setMisCursosEstudiante(inscritos);
+
+    } catch (e) {
+      console.error('Error loading catalog data:', e);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    Promise.all([
-      API.listCursos({ inactivo: false }).catch(() => []),
-      API.getUserCourses().catch(() => [])
-    ])
-      .then(([cursosData, cursosUsuario]) => {
-        setCursos(cursosData);
-        const inscritos = (cursosUsuario || [])
-          .filter(c => c.rol === 'estudiante')
-          .map(c => c.id_curso);
-        setMisCursosEstudiante(inscritos);
-      })
-      .finally(() => setLoading(false));
-  }, [user]);
+    // Usar un temporizador para la búsqueda de texto (q) para evitar peticiones excesivas
+    const timer = setTimeout(() => {
+      loadData();
+    }, 300);
+    return () => clearTimeout(timer);
+  // Añadir todas las dependencias del filtro para re-consultar la API
+  }, [q, horasFiltro, tipoFiltro, publicoFiltro, user]);
 
   const openModal = (curso) => {
     if (user.rol !== 'usuario') {
@@ -243,14 +286,66 @@ export default function CursosCatalogoPage() {
       )}
 
       <section>
-        <h1 className="text-3xl font-bold text-gray-900">Cursos disponibles para ti</h1>
-        <p className="text-gray-600">Cumples los requisitos y puedes inscribirte en los siguientes eventos.</p>
+        <h1 className="text-3xl font-bold text-gray-900">Catálogo de Cursos</h1>
+        <p className="text-gray-600">Busca entre los eventos disponibles y regístrate.</p>
+        
+        {/* 🆕 BARRA DE BÚSQUEDA Y FILTROS */}
+        <div className="p-4 border border-gray-200 rounded-lg mt-6 bg-white shadow-sm">
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Buscar por nombre o descripción..."
+            className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <div className="pt-3 flex flex-wrap items-center gap-3">
+            <select
+              className="rounded border border-gray-300 px-2 py-1 text-sm"
+              value={horasFiltro}
+              onChange={(e) => setHorasFiltro(e.target.value)}
+            >
+              <option value="">Horas: Todas</option>
+              <option value="lt10">Menos de 10</option>
+              <option value="b10_20">Entre 10 y 20</option>
+              <option value="b20_30">Entre 20 y 30</option>
+              <option value="gt30">Mayor de 30</option>
+            </select>
+
+            <select
+              className="rounded border border-gray-300 px-2 py-1 text-sm"
+              value={tipoFiltro}
+              onChange={(e) => setTipoFiltro(e.target.value)}
+            >
+              <option value="">Tipo: Todos</option>
+              <option value="Curso">Curso</option>
+              <option value="Webinar">Webinar</option>
+              <option value="Taller">Taller</option>
+            </select>
+
+            <select
+              className="rounded border border-gray-300 px-2 py-1 text-sm"
+              value={publicoFiltro}
+              onChange={(e) => setPublicoFiltro(e.target.value)}
+            >
+              <option value="">Público: Todos</option>
+              <option value="Estudiantes UTA">Estudiantes UTA</option>
+              <option value="Personal UTA">Personal UTA</option>
+              <option value="Público General">Público General</option>
+            </select>
+          </div>
+        </div>
+        {/* FIN DE FILTROS */}
+
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-          {cursosDisponibles.length ? (
+          {loading ? (
+            <div className="md:col-span-3 text-center py-10 text-gray-500">
+              Cargando cursos...
+            </div>
+          ) : cursosDisponibles.length ? (
             cursosDisponibles.map(curso => renderCard(curso))
           ) : (
             <div className="md:col-span-3 text-center py-10 text-gray-500">
-              No hay cursos disponibles para tu perfil en este momento.
+              No hay cursos disponibles para tu perfil con los filtros aplicados.
             </div>
           )}
         </div>

@@ -126,7 +126,13 @@ export default function MisCursosPage() {
                     <h3 className="text-xl font-semibold text-gray-800">{course.curso_nombre}</h3>
                     <p className="text-sm text-indigo-700 flex items-center">
                         <FaChalkboardTeacher className="inline mr-1 w-4 h-4" />
-                        Rol: <span className="font-medium capitalize">{course.rol === 'responsable' ? 'Responsable Principal' : 'Encargado'}</span>
+                        Rol: <span className="font-medium capitalize">
+                            {course.rol === 'responsable' 
+                              ? 'Responsable Principal' 
+                              : course.rol === 'docente_principal' // 🟢 Asegurarse que esta condición exista
+                              ? 'Docente Principal'
+                              : 'Encargado'}
+                        </span>
                     </p>
                 </div>
             </div>

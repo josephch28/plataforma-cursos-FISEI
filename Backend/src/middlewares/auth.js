@@ -23,12 +23,17 @@ module.exports = function (requiredRole) {
       req.user = payload; // Adjunta { cedula, rol, nombre } a la request
 
       // 3. Verificar rol (si se requiere uno)
-      if (requiredRole && req.user.rol !== requiredRole) {
-         // Si el rol requerido es 'admin' y el usuario no lo es
-         if (requiredRole === 'admin' && req.user.rol !== 'admin') {
-            return res.status(403).json({ message: 'No autorizado (Admin requerido)' });
+      if (requiredRole) { // Si requiredRole tiene un valor (ej: 'usuario' o 'admin')
+         
+         // 🔴 AHORA, si el rol del usuario NO coincide con el rol requerido, bloqueamos.
+         if (req.user.rol !== requiredRole) {
+            
+            // Mensaje de error más genérico y útil
+            return res.status(403).json({ message: `No autorizado. Rol '${requiredRole}' requerido.` });
          }
-         // (Aquí puedes agregar más lógicas si tienes más roles)
+         
+         // Si se requiere 'admin' y el usuario es 'admin', pasa.
+         // Si se requiere 'usuario' y el usuario es 'usuario', pasa.
       }
       
       next(); // ¡Éxito! Pasa al siguiente controlador

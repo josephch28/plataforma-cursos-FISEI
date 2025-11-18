@@ -3,7 +3,7 @@ const pool = require('../db');
 
 exports.list = async (req, res) => {
   try {
-    const { q, tipo, pag = 1, size = 10, inactivo, horas_min, horas_max, publico_objetivo } = req.query;
+    const { q, tipo, pag = 1, size = 10, inactivo, horas_min, horas_max, publico_objetivo, costo_min, costo_max } = req.query;
 
     const offset = (parseInt(pag) - 1) * parseInt(size);
     const filters = [];
@@ -34,10 +34,18 @@ exports.list = async (req, res) => {
 
     if (horas_min) { filters.push('c.horas >= ?'); params.push(parseInt(horas_min)); }
     if (horas_max) { filters.push('c.horas <= ?'); params.push(parseInt(horas_max)); }
+    if (costo_min) { filters.push('c.costo >= ?'); params.push(parseFloat(costo_min)); }
+    if (costo_max) { filters.push('c.costo <= ?'); params.push(parseFloat(costo_max)); }
 
     const where = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
     const [rows] = await pool.query(
-      `SELECT c.* FROM curso c ${where} ORDER BY c.created_at DESC LIMIT ? OFFSET ?`,
+      `SELECT c.*,
+              cp.nombre AS prerequisito_nombre
+         FROM curso c
+         LEFT JOIN curso cp ON c.prerequisito = cp.id_curso
+        ${where}
+        ORDER BY c.created_at DESC
+        LIMIT ? OFFSET ?`,
       [...params, parseInt(size), offset]
     );
     res.json(rows);
@@ -84,19 +92,29 @@ exports.create = async (req, res) => {
       return res.status(400).json({ message: 'Validación fallida', errors: ['cedula_responsable debe tener rol responsable'] });
     }
 
+    let cedulaDocente = b.cedula_docente || null;
+    if (cedulaDocente) {
+      const [uDoc] = await pool.query('SELECT cedula FROM usuario WHERE cedula = ?', [cedulaDocente]);
+      if (!uDoc.length) {
+        return res.status(400).json({ message: 'Validación fallida', errors: ['cedula_docente no corresponde a un usuario válido'] });
+      }
+    }
+
     // 4) INSERT usando cedulaAdmin del token
     const [result] = await pool.query(
       `INSERT INTO curso
-       (cedula_admin, cedula_responsable, nombre, descripcion, tipo, horas, es_pagado, prerequisito, publico_objetivo, nota_aprobacion, requiere_asistencia, fecha_inicio, fecha_fin, activo)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,FALSE)`,
+       (cedula_admin, cedula_responsable, cedula_docente, nombre, descripcion, tipo, horas, es_pagado, costo, prerequisito, publico_objetivo, nota_aprobacion, requiere_asistencia, fecha_inicio, fecha_fin, activo)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,FALSE)`,
       [
         cedulaAdmin,
         b.cedula_responsable,
+        cedulaDocente,
         b.nombre,
         b.descripcion || null,
         b.tipo || null,
         b.horas ?? null,
         !!b.es_pagado,
+        b.costo ?? 0,
         b.prerequisito ?? null,
         publicoCSV ?? null,
         b.nota_aprobacion ?? 7.0,
@@ -119,6 +137,22 @@ exports.update = async (req, res) => {
     const b = req.validated || req.body;
     console.log('UPDATE payload:', b, 'id:', req.params.id);
 
+    const cedula = req.user?.cedula;
+    const rol = req.user?.rol;
+    if (!cedula) return res.status(401).json({ message: 'Sesión inválida' });
+
+    // Admin puede actualizar cualquier curso, otros sólo si son responsables del curso
+    if (rol !== 'admin') {
+      const [[curso]] = await pool.query(
+        'SELECT cedula_responsable FROM curso WHERE id_curso = ?',
+        [req.params.id]
+      );
+
+      if (!curso || curso.cedula_responsable !== cedula) {
+        return res.status(403).json({ message: 'No autorizado para editar este curso' });
+      }
+    }
+
     let publicoCSV = b.publico_objetivo;
     if (Array.isArray(publicoCSV)) publicoCSV = publicoCSV.join(',');
     else if (typeof publicoCSV === 'object' && publicoCSV !== null) publicoCSV = Object.values(publicoCSV).join(',');
@@ -130,10 +164,17 @@ exports.update = async (req, res) => {
       }
     }
 
+    if (b.cedula_docente) {
+      const [uDoc] = await pool.query('SELECT cedula FROM usuario WHERE cedula = ?', [b.cedula_docente]);
+      if (!uDoc.length) {
+        return res.status(400).json({ message: 'Validación fallida', errors: ['cedula_docente no corresponde a un usuario válido'] });
+      }
+    }
+
     const fields = [];
     const params = [];
     const allowed = [
-      'cedula_responsable','nombre','descripcion','tipo','horas','es_pagado',
+      'cedula_responsable','cedula_docente','nombre','descripcion','tipo','horas','es_pagado','costo',
       'prerequisito','publico_objetivo','nota_aprobacion','requiere_asistencia','fecha_inicio','fecha_fin'
     ];
 
@@ -169,6 +210,21 @@ exports.remove = async (req, res) => {
 
 exports.activate = async (req, res) => {
   try {
+    const cedula = req.user?.cedula;
+    const rol = req.user?.rol;
+    if (!cedula) return res.status(401).json({ message: 'Sesión inválida' });
+
+    if (rol !== 'admin') {
+      const [[curso]] = await pool.query(
+        'SELECT cedula_responsable FROM curso WHERE id_curso = ?',
+        [req.params.id]
+      );
+
+      if (!curso || curso.cedula_responsable !== cedula) {
+        return res.status(403).json({ message: 'No autorizado para activar este curso' });
+      }
+    }
+
     await pool.query('UPDATE curso SET activo = TRUE WHERE id_curso = ?', [req.params.id]);
     res.status(200).json({ message: 'Curso activado' });
   } catch (error) {

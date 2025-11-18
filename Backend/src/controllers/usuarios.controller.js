@@ -162,3 +162,71 @@ exports.activate = async (req, res) => {
     res.status(500).json({ message: 'Error al activar usuario' });
   }
 };
+
+exports.getUserCourses = async (req, res) => {
+    // La cédula se obtiene del token JWT, gracias al middleware 'auth'
+    const cedula = req.user.cedula; 
+
+    try {
+        // Query 1: Cursos donde el usuario está inscrito (Estudiante)
+        const [enrolledCourses] = await pool.query(`
+            SELECT 
+                i.id_inscripcion,
+                c.id_curso,
+                c.nombre AS curso_nombre,
+                c.es_pagado,
+                c.costo,
+                i.estado,
+                p.id_pago,
+                p.aprobado AS pago_aprobado,
+                p.metodo_pago,
+                p.numero_orden,
+                p.monto AS monto_pago,
+                p.comprobante_pdf,
+                'estudiante' AS rol
+            FROM inscripcion i
+            JOIN curso c ON i.id_curso = c.id_curso
+            LEFT JOIN pago p ON i.id_inscripcion = p.id_inscripcion
+            WHERE i.cedula_usuario = ?
+        `, [cedula]);
+
+        // Query 2: Cursos donde el usuario es el responsable principal
+        const [responsibleCourses] = await pool.query(`
+            SELECT
+                c.id_curso,
+                c.nombre AS curso_nombre,
+                'responsable' AS rol
+            FROM curso c
+            WHERE c.cedula_responsable = ? AND c.activo = 1
+        `, [cedula]);
+        
+        // Query 3: Cursos donde el usuario es un encargado/co-instructor
+        const [encargadoCourses] = await pool.query(`
+            SELECT
+                c.id_curso,
+                c.nombre AS curso_nombre,
+                'encargado' AS rol
+            FROM curso c
+            JOIN curso_encargado ce ON c.id_curso = ce.id_curso
+            WHERE ce.cedula_encargado = ? AND c.activo = 1
+        `, [cedula]);
+
+        // Combinar todos los resultados y eliminar duplicados (priorizando el rol de estudiante)
+        const combinedCourses = [...enrolledCourses, ...responsibleCourses, ...encargadoCourses];
+        const courseMap = new Map();
+        
+        combinedCourses.forEach(course => {
+            const key = course.id_curso;
+            // Si el curso ya existe, solo lo reemplaza si el nuevo rol es 'estudiante'
+            if (course.rol === 'estudiante' || !courseMap.has(key)) {
+                courseMap.set(key, course);
+            }
+        });
+
+        res.json(Array.from(courseMap.values()));
+
+    } catch (error) {
+        console.error('Error fetching user courses:', error);
+        res.status(500).json({ error: 'Error al obtener los cursos del usuario' });
+    }
+};

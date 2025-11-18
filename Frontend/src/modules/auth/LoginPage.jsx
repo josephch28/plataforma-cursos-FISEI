@@ -22,6 +22,9 @@ export default function LoginPage() {
         case 'responsable':
           navigate('/cursos');
           break;
+        case 'usuario':
+          navigate('/catalogo'); 
+          break;
         default:
           break;
       }
@@ -45,9 +48,8 @@ export default function LoginPage() {
           navigate('/cursos');
           break;
         case 'usuario':
-          // Usuario no tiene acceso aún
-          alert('El rol usuario aún no tiene acceso al sistema. Las vistas se implementarán próximamente.');
-          logout();
+          // 🆕 Redirigir al catálogo en lugar de bloquear
+          navigate('/catalogo'); 
           break;
         case 'develop':
           navigate('/dashboard');
@@ -128,7 +130,7 @@ export default function LoginPage() {
               <p className="font-mono text-gray-700">boris@uta.edu.ex / 123456</p>
             </div>
             <div className="bg-purple-50 p-2 rounded">
-              <p className="font-semibold text-purple-700">Usuario (Sin acceso aún)</p>
+              <p className="font-semibold text-purple-700">Usuario</p>
               <p className="font-mono text-gray-700">jm@gmail.com / 123456</p>
             </div>
           </div>

@@ -29,6 +29,7 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
     tipo: initial.tipo || '',
     horas: initial.horas ?? '',
     es_pagado: initial.es_pagado ?? false,
+    costo: initial.costo ?? 0,
     publico_objetivo: initial.publico_objetivo || '',
     nota_aprobacion: initial.nota_aprobacion ?? 7,
     requiere_asistencia: initial.requiere_asistencia ?? true,
@@ -109,6 +110,7 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
     if (data.horas !== '' && (!Number.isInteger(Number(data.horas)) || Number(data.horas) <= 0)) e.horas = 'Horas entero positivo';
     if (data.nota_aprobacion < 0 || data.nota_aprobacion > 10) e.nota_aprobacion = 'Nota entre 0 y 10';
     if (data.fecha_inicio && data.fecha_fin && new Date(data.fecha_inicio) > new Date(data.fecha_fin)) e.fecha_fin = 'Fin debe ser mayor o igual a inicio';
+    if (data.es_pagado && (data.costo === '' || Number(data.costo) < 0)) e.costo = 'Costo válido requerido';
     return e;
   };
 
@@ -127,6 +129,7 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
         cedula_responsable: typeof data.cedula_responsable === 'object' ? data.cedula_responsable.value : data.cedula_responsable,
         cedula_docente: typeof data.cedula_docente === 'object' ? data.cedula_docente.value : (data.cedula_docente || null),
         horas: data.horas === '' ? null : Number(data.horas),
+        costo: data.es_pagado ? Number(data.costo || 0) : 0,
         nota_aprobacion: Number(data.nota_aprobacion),
         requiere_asistencia: Boolean(data.requiere_asistencia),
         es_pagado: Boolean(data.es_pagado),
@@ -313,6 +316,21 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
           <option value="true">Sí</option>
         </select>
       </div>
+      {data.es_pagado && (
+        <div>
+          <label className={labelClass}>Costo (USD)</label>
+          <input
+            className={inputClass}
+            type="number"
+            min="0"
+            step="0.01"
+            value={data.costo}
+            onChange={(e) => setData({ ...data, costo: e.target.value })}
+            placeholder="Ej. 120.00"
+          />
+          {errors.costo && <p className="text-xs text-red-600 mt-1">{errors.costo}</p>}
+        </div>
+      )}
 
       {/* Fechas */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

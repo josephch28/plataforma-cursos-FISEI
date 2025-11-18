@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { API } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import TablaEvaluaciones from './TablaEvaluaciones';
+import { useAuth } from '../../context/AuthContext';
 
 export default function EvaluacionesListPage() {
   const [rows, setRows] = useState([]);
@@ -10,6 +11,7 @@ export default function EvaluacionesListPage() {
   const [size, setSize] = useState(10);
   const [loading, setLoading] = useState(false);
   const nav = useNavigate();
+  const { user } = useAuth();
 
   // NUEVO: estados para el modal de confirmación
   const [showConfirm, setShowConfirm] = useState(false);
@@ -17,11 +19,12 @@ export default function EvaluacionesListPage() {
 
   useEffect(() => {
     setLoading(true);
-    API.listInscripciones()
+    const isAdmin = user?.rol === 'admin';
+    API.listInscripciones(isAdmin ? {} : { misCursos: true })
       .then(data => setRows(data))
       .catch(() => setRows([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [user]);
 
   // Filtros y paginación
   const filtered = rows.filter(row =>
@@ -56,12 +59,14 @@ export default function EvaluacionesListPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-semibold text-gray-900">Evaluaciones</h1>
-        <button
-          onClick={() => nav('/evaluaciones/nueva')}
-          className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition"
-        >
-          Nueva evaluación
-        </button>
+        {user?.rol === 'admin' && (
+          <button
+            onClick={() => nav('/evaluaciones/nueva')}
+            className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition"
+          >
+            Nueva evaluación
+          </button>
+        )}
       </div>
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         {/* Barra de búsqueda */}
@@ -78,7 +83,7 @@ export default function EvaluacionesListPage() {
           rows={pagRows}
           loading={loading}
           onEdit={handleEdit}
-          onDelete={handleDelete}
+          onDelete={user?.rol === 'admin' ? handleDelete : undefined}
         />
         {/* Paginación */}
         <div className="px-4 py-4 flex items-center justify-between border-t border-gray-200">

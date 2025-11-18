@@ -135,6 +135,10 @@ export default function LoginPage() {
             </div>
           </div>
         </div>
+
+        <div className="mt-4 text-center text-sm">
+          <p>¿No tienes una cuenta? <button onClick={() => navigate('/register')} className="text-blue-600 underline">Regístrate</button></p>
+        </div>
       </div>
     </div>
   );

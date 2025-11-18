@@ -69,6 +69,11 @@ export const API = {
     const res = await fetch(`/api/usuarios/mis-cursos`, { headers: getAuthHeaders() });
     return await handleResponse(res);
   },
+  // Registro público de usuarios
+  async registerUser(data) {
+    const res = await fetch(`/api/auth/register`, { method: 'POST', headers: getPublicHeaders(), body: JSON.stringify(data) });
+    return await handleResponse(res);
+  },
 
   // ===================== Cursos =====================
   async listCursos(params = {}) {

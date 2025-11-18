@@ -88,7 +88,7 @@ exports.create = async (req, res) => {
     const [result] = await pool.query(
       `INSERT INTO curso
        (cedula_admin, cedula_responsable, nombre, descripcion, tipo, horas, es_pagado, prerequisito, publico_objetivo, nota_aprobacion, requiere_asistencia, fecha_inicio, fecha_fin, activo)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,TRUE)`,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,FALSE)`,
       [
         cedulaAdmin,
         b.cedula_responsable,

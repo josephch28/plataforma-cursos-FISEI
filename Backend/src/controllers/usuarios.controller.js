@@ -199,8 +199,14 @@ exports.getUserCourses = async (req, res) => {
             FROM curso c
             WHERE c.cedula_responsable = ? AND c.activo = 1
         `, [cedula]);
-        
-        // Query 3: Cursos donde el usuario es un encargado/co-instructor
+        // Query 3: Cursos donde el usuario es el docente principal 🆕
+        const [docentePrincipalCourses] = await pool.query(`
+          SELECT c.id_curso, c.nombre AS curso_nombre, 'docente_principal' AS rol
+          FROM curso c
+          WHERE c.cedula_docente = ? AND c.activo = 1
+      `, [cedula]);
+
+        // Query 4: Cursos donde el usuario es un encargado/co-instructor
         const [encargadoCourses] = await pool.query(`
             SELECT
                 c.id_curso,
@@ -212,9 +218,8 @@ exports.getUserCourses = async (req, res) => {
         `, [cedula]);
 
         // Combinar todos los resultados y eliminar duplicados (priorizando el rol de estudiante)
-        const combinedCourses = [...enrolledCourses, ...responsibleCourses, ...encargadoCourses];
+        const combinedCourses = [...enrolledCourses, ...responsibleCourses, ...docentePrincipalCourses, ...encargadoCourses];        
         const courseMap = new Map();
-        
         combinedCourses.forEach(course => {
             const key = course.id_curso;
             // Si el curso ya existe, solo lo reemplaza si el nuevo rol es 'estudiante'

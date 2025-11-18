@@ -20,24 +20,37 @@ exports.list = async (req, res) => {
   }
 };
 
-// Listar inscripciones de cursos donde el usuario es docente (encargado)
+// Listar inscripciones de cursos donde el usuario es docente (encargado, responsable o docente principal)
 exports.listByDocente = async (req, res) => {
   const cedula = req.user?.cedula;
   if (!cedula) return res.status(401).json({ message: 'Sesión inválida' });
 
   try {
     const [rows] = await pool.query(
-      `SELECT DISTINCT 
+      `SELECT 
           i.*, 
           c.nombre AS curso_nombre,
           u.nombre AS usuario_nombre,
-          u.apellido AS usuario_apellido
+          u.apellido AS usuario_apellido,
+          CASE 
+              WHEN c.cedula_docente = ? THEN 'docente_principal'
+              WHEN c.cedula_responsable = ? THEN 'responsable'
+              -- Verificamos si es encargado usando la existencia de la fila en el LEFT JOIN
+              WHEN ce.cedula_encargado IS NOT NULL THEN 'encargado' 
+              ELSE NULL 
+          END AS usuario_rol_en_curso
        FROM inscripcion i
        JOIN curso c ON i.id_curso = c.id_curso
        JOIN usuario u ON u.cedula = i.cedula_usuario
-       JOIN curso_encargado ce ON ce.id_curso = c.id_curso
-       WHERE ce.cedula_encargado = ?`,
-      [cedula]
+       -- Hacemos un LEFT JOIN para saber si el usuario es un encargado en ESE curso
+       LEFT JOIN curso_encargado ce ON ce.id_curso = c.id_curso AND ce.cedula_encargado = ?
+       WHERE 
+         -- Filtrar cursos en los que tiene CUALQUIERA de los roles
+         c.cedula_docente = ? OR
+         c.cedula_responsable = ? OR 
+         ce.cedula_encargado IS NOT NULL`,
+      // Pasamos la cédula para el CASE, y luego para las condiciones del WHERE
+      [cedula, cedula, cedula, cedula, cedula, cedula] 
     );
     res.json(rows);
   } catch (err) {
@@ -168,35 +181,54 @@ exports.create = async (req, res) => {
 // Actualizar inscripción (docente/responsable/admin)
 exports.update = async (req, res) => {
   const { id } = req.params;
-  const { nota_final, asistencia, estado } = req.validated || req.body;
+  const b = req.validated || req.body; 
   try {
     const cedula = req.user?.cedula;
     const rol = req.user?.rol;
 
+    // 🟢 FIX 1: Manejar valores nulos para campos numéricos (nota_final, asistencia). 
+    // Si la cadena está vacía (''), se establece a null para la base de datos.
+    const notaFinal = b.nota_final === '' ? null : b.nota_final;
+    const asistencia = b.asistencia === '' ? null : b.asistencia;
+    const estado = b.estado;
+
     if (!cedula) return res.status(401).json({ message: 'Sesión inválida' });
 
-    // Solo admin o docentes (encargados) pueden actualizar
+    // La lógica de permisos de Docentes y Responsables solo aplica si NO es admin
     if (rol !== 'admin') {
+      
+      // Verificación de permisos: Docente Principal, Responsable o Encargado.
       const [rows] = await pool.query(
         `SELECT 1
            FROM inscripcion i
-           JOIN curso_encargado ce ON ce.id_curso = i.id_curso
-          WHERE i.id_inscripcion = ? AND ce.cedula_encargado = ?`,
-        [id, cedula]
+           JOIN curso c ON c.id_curso = i.id_curso
+          WHERE i.id_inscripcion = ?
+            AND (c.cedula_docente = ?              -- Es el docente principal
+            OR c.cedula_responsable = ?            -- Es el responsable principal
+            OR EXISTS (SELECT 1 FROM curso_encargado ce WHERE ce.id_curso = i.id_curso AND ce.cedula_encargado = ?))`, 
+        // Se pasan los parámetros en el orden correcto para la consulta:
+        [id, cedula, cedula, cedula] 
       );
-
+      
       if (!rows.length) {
         return res.status(403).json({ message: 'No autorizado para calificar este curso' });
       }
     }
 
+    // 🟢 Ejecución de la actualización con los valores seguros
     await pool.query(
       'UPDATE inscripcion SET nota_final=?, asistencia=?, estado=? WHERE id_inscripcion=?',
-      [nota_final, asistencia, estado, id]
+      [notaFinal, asistencia, estado, id] // Usamos notaFinal y asistencia que pueden ser null
     );
-    res.json({ ok: true });
+    res.json({ message: 'Evaluación actualizada correctamente.' });
+
   } catch (err) {
-    res.status(500).json({ error: 'Error al actualizar inscripción' });
+    console.error('Error FATAL al actualizar inscripción:', err); 
+    // 🟢 FIX 2: Devolver un error más detallado en la respuesta.
+    res.status(500).json({ 
+        error: 'Error al actualizar inscripción', 
+        details: err.sqlMessage || err.message 
+    });
   }
 };
 
@@ -225,18 +257,25 @@ exports.getOne = async (req, res) => {
       const esPropietario = inscripcion.cedula_usuario === cedula;
 
       const [[curso]] = await pool.query(
-        'SELECT cedula_responsable FROM curso WHERE id_curso = ?',
+        // 🟢 Incluir cedula_docente en la consulta a la tabla curso
+        'SELECT cedula_responsable, cedula_docente FROM curso WHERE id_curso = ?',
         [inscripcion.id_curso]
       );
+      
       const esResponsable = curso && curso.cedula_responsable === cedula;
+      
+      // 🟢 NUEVA VERIFICACIÓN: Es el Docente Principal?
+      const esDocentePrincipal = curso && curso.cedula_docente === cedula; 
 
       const [docenteRows] = await pool.query(
         'SELECT 1 FROM curso_encargado WHERE id_curso = ? AND cedula_encargado = ?',
         [inscripcion.id_curso, cedula]
       );
-      const esDocente = docenteRows.length > 0;
+      // Renombrar para mayor claridad
+      const esDocenteEncargado = docenteRows.length > 0; 
 
-      if (!esPropietario && !esResponsable && !esDocente) {
+      // 🟢 AÑADIR esDocentePrincipal a la condición OR
+      if (!esPropietario && !esResponsable && !esDocentePrincipal && !esDocenteEncargado) {
         return res.status(403).json({ message: 'No autorizado para ver esta inscripción' });
       }
     }

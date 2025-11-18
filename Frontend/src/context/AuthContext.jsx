@@ -37,10 +37,13 @@ export const AuthProvider = ({ children }) => {
         throw new Error(error.message || 'Error al iniciar sesión');
       }
 
-      const userData = await res.json();
-      setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
-      return userData;
+      const data = await res.json(); // <-- AHORA 'data' CONTIENE { token, user }
+      
+      setUser(data.user);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      localStorage.setItem('token', data.token); // <-- ¡NUEVO! Guardamos el token
+
+      return data.user; // Devolvemos solo el usuario, como antes
     } catch (error) {
       throw error;
     }
@@ -49,6 +52,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     setUser(null);
     localStorage.removeItem('user');
+    localStorage.removeItem('token'); // <-- ¡NUEVO! Borramos el token
   };
 
   return (

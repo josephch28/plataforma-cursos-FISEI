@@ -1,9 +1,10 @@
+// Frontend/src/modules/usuarios/UsuariosListPage.jsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TablaUsuarios from './TablaUsuarios';
 import { API } from '../../services/api';
 
-export default function UsuariosListPage({ auth }) {
+export default function UsuariosListPage() { // <-- SIN {auth}
   const nav = useNavigate();
   const [tab, setTab] = useState('activos');
   
@@ -20,9 +21,9 @@ export default function UsuariosListPage({ auth }) {
 
     try {
       if (action === 'delete') {
-        await API.deleteUsuario(cedula, auth);
+        await API.deleteUsuario(cedula); // <-- SIN auth
       } else if (action === 'activate') {
-        await API.activateUsuario(cedula, auth);
+        await API.activateUsuario(cedula); // <-- SIN auth
       }
       setConfirmModal(null);
       // Ejecutar la función de recarga que vino desde TablaUsuarios
@@ -75,7 +76,7 @@ export default function UsuariosListPage({ auth }) {
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <TablaUsuarios
-          auth={auth}
+          // auth={auth} <-- ELIMINADO
           showInactive={tab === 'desactivados'} // Pasa el estado de la pestaña
           onEdit={(cedula) => nav(`/usuarios/${cedula}/editar`)}
           onAction={handleAction} // Pasa el handler para abrir el modal

@@ -8,15 +8,13 @@ const isTenDigits = (v) => /^[0-9]{10}$/.test(v || '');
 
 function toDateInputValue(date) {
   if (!date) return '';
-  // Si ya está en formato yyyy-MM-dd, regresa igual
   if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
-  // Si es formato ISO, conviértelo
   const d = new Date(date);
   const pad = n => n < 10 ? '0' + n : n;
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-export default function FormCurso({ initial = {}, onSaved, auth }) {
+export default function FormCurso({ initial = {}, onSaved }) { // <-- SIN auth
   const [data, setData] = useState({
     cedula_admin: initial.cedula_admin || '',
     cedula_responsable: initial.cedula_responsable || '',
@@ -39,7 +37,6 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Carga los usuarios para el autocompletado
     API.listUsuarios().then(setUsuarios);
   }, []);
 
@@ -86,18 +83,17 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
         cedula_responsable: typeof data.cedula_responsable === 'object' ? data.cedula_responsable.value : data.cedula_responsable,
         horas: data.horas === '' ? null : Number(data.horas),
         nota_aprobacion: Number(data.nota_aprobacion),
-        requiere_asistencia: Boolean(data.requiere_asistencia), 
-        es_pagado: Boolean(data.es_pagado), 
+        requiere_asistencia: Boolean(data.requiere_asistencia),
+        es_pagado: Boolean(data.es_pagado),
         fecha_inicio: toDateInputValue(data.fecha_inicio),
         fecha_fin: toDateInputValue(data.fecha_fin)
       };
       if (initial.id_curso) {
-        await API.updateCurso(initial.id_curso, payload, auth);
+        await API.updateCurso(initial.id_curso, payload); // <-- SIN auth
         setMensaje({ tipo: 'exito', texto: 'Curso actualizado correctamente.' });
       } else {
-        await API.createCurso(payload, auth);
+        await API.createCurso(payload); // <-- SIN auth
         setMensaje({ tipo: 'exito', texto: 'Curso creado correctamente.' });
-        // Limpiar campos si quieres
       }
       setTimeout(() => {
         setMensaje(null);

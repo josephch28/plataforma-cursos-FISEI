@@ -4,7 +4,7 @@ import { API } from '../../services/api';
 
 const isTenDigits = (v) => /^[0-9]{10}$/.test(v || '');
 
-export default function EncargadosPanel({ curso, auth }) {
+export default function EncargadosPanel({ curso }) { // <-- SIN auth
   const [rows, setRows] = useState([]);
   const [cedula, setCedula] = useState('');
   const [err, setErr] = useState('');
@@ -20,7 +20,7 @@ export default function EncargadosPanel({ curso, auth }) {
     setErr('');
     if (!isTenDigits(cedula)) { setErr('La cédula debe tener 10 dígitos'); return; }
     try {
-      await API.addEncargado(curso.id_curso, cedula, auth);
+      await API.addEncargado(curso.id_curso, cedula); // <-- SIN auth
       setCedula('');
       await load();
     } catch (e) {
@@ -30,10 +30,9 @@ export default function EncargadosPanel({ curso, auth }) {
 
   const remove = async (ced) => {
     if (!confirm('¿Quitar encargado?')) return;
-    await API.removeEncargado(curso.id_curso, ced, auth).catch(()=>{});
+    await API.removeEncargado(curso.id_curso, ced).catch(()=>{}); // <-- SIN auth
     await load();
   };
-
   return (
     <div className="space-y-4">
       <div className="flex items-end gap-2">

@@ -1,11 +1,10 @@
-// src/modules/cursos/CursosPage.jsx
 import { useState, useEffect } from 'react';
 import TablaCursos from './TablaCursos';
 import FormCurso from './FormCurso';
 import EncargadosPanel from './EncargadosPanel';
 import { API } from '../../services/api';
 
-export default function CursosPage({ auth }) {
+export default function CursosPage() { // <-- SIN auth
   const [editing, setEditing] = useState(null);
   const [refreshFlag, setRefreshFlag] = useState(0);
   const [encCurso, setEncCurso] = useState(null);
@@ -24,13 +23,12 @@ export default function CursosPage({ auth }) {
             key={refreshFlag}
             onEdit={setEditing}
             onManageEnc={(curso) => setEncCurso(curso)}
-            auth={auth}
           />
         </div>
         <div className="lg:col-span-1">
           <div className="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">
             <h2 className="text-lg font-medium mb-3">{editing ? 'Editar curso' : 'Crear curso'}</h2>
-            <FormCurso initial={editing || {}} onSaved={onSaved} auth={auth} />
+            <FormCurso initial={editing || {}} onSaved={onSaved} />
           </div>
         </div>
       </div>
@@ -43,7 +41,7 @@ export default function CursosPage({ auth }) {
               <button className="text-gray-500 hover:text-gray-700" onClick={() => setEncCurso(null)}>Cerrar</button>
             </div>
             <div className="p-4">
-              <EncargadosPanel curso={encCurso} auth={auth} />
+              <EncargadosPanel curso={encCurso} />
             </div>
           </div>
         </div>

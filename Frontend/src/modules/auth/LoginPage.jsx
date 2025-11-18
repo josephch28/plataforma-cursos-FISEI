@@ -121,19 +121,15 @@ export default function LoginPage() {
           <div className="space-y-2 text-xs">
             <div className="bg-blue-50 p-2 rounded">
               <p className="font-semibold text-blue-700">Admin</p>
-              <p className="font-mono text-gray-700">damian@uta.edu.ec / 12345</p>
+              <p className="font-mono text-gray-700">damian@uta.edu.ec / 123456</p>
             </div>
             <div className="bg-green-50 p-2 rounded">
               <p className="font-semibold text-green-700">Responsable</p>
-              <p className="font-mono text-gray-700">boris@uta.edu.ex / 12345</p>
+              <p className="font-mono text-gray-700">boris@uta.edu.ex / 123456</p>
             </div>
             <div className="bg-purple-50 p-2 rounded">
               <p className="font-semibold text-purple-700">Usuario (Sin acceso aún)</p>
-              <p className="font-mono text-gray-700">jm@gmail.com / 12345678</p>
-            </div>
-            <div className="bg-gray-50 p-2 rounded">
-              <p className="font-semibold text-gray-700">Develop</p>
-              <p className="font-mono text-gray-700">carlos@uta.edu.ec / develop123</p>
+              <p className="font-mono text-gray-700">jm@gmail.com / 123456</p>
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { API } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import DashboardDevelop from '../solicitudes/DashboardDevelop';
 
 export default function DashboardPage() {
@@ -26,7 +27,7 @@ export default function DashboardPage() {
     load();
   }, []);
 
-
+  const { user } = useAuth();
 
   if (user?.rol === 'develop') {
     // Show the full solicitudes dashboard for develop users

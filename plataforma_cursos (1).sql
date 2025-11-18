@@ -47,11 +47,13 @@ CREATE TABLE `curso` (
   `id_curso` int(11) NOT NULL,
   `cedula_admin` varchar(10) NOT NULL,
   `cedula_responsable` varchar(10) NOT NULL,
+  `cedula_docente` varchar(10) DEFAULT NULL,
   `nombre` varchar(120) NOT NULL,
   `descripcion` text DEFAULT NULL,
   `tipo` varchar(60) DEFAULT NULL,
   `horas` int(11) DEFAULT NULL,
   `es_pagado` tinyint(1) DEFAULT 0,
+  `costo` decimal(10,2) DEFAULT 0.00,
   `prerequisito` varchar(120) DEFAULT NULL,
   `publico_objetivo` varchar(120) DEFAULT NULL,
   `nota_aprobacion` decimal(4,2) DEFAULT 7.00,
@@ -67,8 +69,8 @@ CREATE TABLE `curso` (
 -- Volcado de datos para la tabla `curso`
 --
 
-INSERT INTO `curso` (`id_curso`, `cedula_admin`, `cedula_responsable`, `nombre`, `descripcion`, `tipo`, `horas`, `es_pagado`, `prerequisito`, `publico_objetivo`, `nota_aprobacion`, `requiere_asistencia`, `fecha_inicio`, `fecha_fin`, `created_at`, `updated_at`, `activo`) VALUES
-(1, '0101010101', '0202020202', 'Desarrollo Web', 'Curso introductorio de desarrollo web', 'Tecnología', 40, 1, '', '', 8.00, 1, '2025-11-10', '2025-12-20', '2025-11-10 22:52:01', '2025-11-11 17:35:01', 1);
+INSERT INTO `curso` (`id_curso`, `cedula_admin`, `cedula_responsable`, `cedula_docente`, `nombre`, `descripcion`, `tipo`, `horas`, `es_pagado`, `costo`, `prerequisito`, `publico_objetivo`, `nota_aprobacion`, `requiere_asistencia`, `fecha_inicio`, `fecha_fin`, `created_at`, `updated_at`, `activo`) VALUES
+(1, '0101010101', '0202020202', '1850063809', 'Desarrollo Web', 'Curso introductorio de desarrollo web', 'Tecnología', 40, 1, 120.00, '', '', 8.00, 1, '2025-11-10', '2025-12-20', '2025-11-10 22:52:01', '2025-11-11 17:35:01', 1);
 
 -- --------------------------------------------------------
 
@@ -117,9 +119,13 @@ CREATE TABLE `pago` (
   `id_pago` int(11) NOT NULL,
   `id_inscripcion` int(11) NOT NULL,
   `monto` decimal(10,2) NOT NULL,
+  `metodo_pago` enum('transferencia','deposito') DEFAULT 'transferencia',
+  `numero_orden` varchar(30) NOT NULL,
   `comprobante_pdf` varchar(255) DEFAULT NULL,
   `fecha_pago` date DEFAULT curdate(),
   `aprobado` tinyint(1) DEFAULT 0,
+  `aprobado_por` varchar(10) DEFAULT NULL,
+  `fecha_aprobacion` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

@@ -1,6 +1,7 @@
 // src/modules/cursos/TablaCursos.jsx - CON BÚSQUEDA + FILTROS SIN CAMBIAR ESTILO
 import { useEffect, useMemo, useState } from 'react';
 import { API } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 export default function TablaCursos({ onEdit, showInactive = false }) {
   const [rows, setRows] = useState([]);
@@ -10,6 +11,7 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
   const [loading, setLoading] = useState(false);
   const [deleteModal, setDeleteModal] = useState(null);
   const [activateModal, setActivateModal] = useState(null);
+  const { user } = useAuth();
 
   // Filtros (debajo del input para no afectar cabecera ni tabla)
   const [horasFiltro, setHorasFiltro] = useState('');      // '', lt10, b10_20, b20_30, gt30
@@ -44,11 +46,19 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
     setLoading(true);
     try {
       const data = await API.listCursos(buildParams());
+      const cedula = user?.cedula;
+      const rol = user?.rol;
       // Si la página actual queda vacía y no es la primera, retroceder una
-      if (Array.isArray(data) && data.length === 0 && pag > 1) {
+      let visible = Array.isArray(data) ? data : [];
+      // Si es responsable, sólo ver cursos donde es responsable
+      if (rol === 'responsable' && cedula) {
+        visible = visible.filter(c => c.cedula_responsable === cedula);
+      }
+
+      if (visible.length === 0 && pag > 1) {
         setPag((p) => Math.max(1, p - 1));
       } else {
-        setRows(Array.isArray(data) ? data : []);
+        setRows(visible);
       }
     } finally {
       setLoading(false);

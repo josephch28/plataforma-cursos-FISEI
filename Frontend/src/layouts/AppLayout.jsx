@@ -5,10 +5,13 @@ import { useAuth } from '../context/AuthContext';
 
 const allMenuItems = [
   { key: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: HiOutlineHome, roles: ['admin', 'develop'] },
+  { key: 'catalogo', label: 'Cursos (Catálogo)', to: '/catalogo', icon: HiOutlineBookOpen, roles: ['usuario'] },
+  { key: 'mis-cursos', label: 'Mis Cursos', to: '/mis-cursos', icon: HiOutlineClipboardList, roles: ['usuario', 'responsable'] },
+  { key: 'pagos', label: 'Aprobación Pagos', to: '/pagos', icon: HiOutlineCheckCircle, roles: ['admin'] },
   { key: 'usuarios', label: 'Usuarios', to: '/usuarios', icon: HiOutlineUserGroup, roles: ['admin'] },
   { key: 'cursos', label: 'Cursos', to: '/cursos', icon: HiOutlineBookOpen, roles: ['admin', 'responsable'] },
   { key: 'inscripciones', label: 'Inscripciones', to: '/inscripciones', icon: HiOutlineClipboardList, roles: ['admin'] },
-  { key: 'evaluaciones', label: 'Evaluaciones', to: '/evaluaciones', icon: HiOutlineCheckCircle, roles: ['admin'] },
+  { key: 'evaluaciones', label: 'Evaluaciones', to: '/evaluaciones', icon: HiOutlineCheckCircle, roles: ['responsable', 'usuario'] },
   { key: 'solicitudes', label: 'Solicitudes', to: '/solicitudes', icon: HiOutlineClipboardList, roles: ['develop'] }
 ];
 

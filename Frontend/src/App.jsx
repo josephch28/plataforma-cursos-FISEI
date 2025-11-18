@@ -17,6 +17,10 @@ import DashboardPage from './modules/dashboard/DashboardPage';
 import SolicitudesListPage from './modules/solicitudes/SolicitudesListPage';
 import FormSolicitud from './modules/solicitudes/FormSolicitud';
 import DashboardDevelop from './modules/solicitudes/DashboardDevelop';
+import CursosCatalogoPage from './modules/cursos/CursosCatalogoPage'; // 🆕 Importar
+import PagoSubirPage from './modules/pagos/PagoSubirPage';
+import AprobacionPagosPage from './modules/pagos/AprobacionPagosPage';
+import MisCursosPage from './modules/misCursos/MisCursosPage';
 
 export default function App() {
   // const auth = { rol: 'admin', cedula: '0101010101' }; // <-- ¡ELIMINADO! Ya no necesitamos esto.
@@ -27,9 +31,13 @@ export default function App() {
         <Route path="/login" element={<LoginPage />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
-            <Route path="/" element={<Navigate to="/dashboard" />} />
+            <Route path="/" element={<Navigate to="/catalogo" />} />
+            <Route path="/catalogo" element={<CursosCatalogoPage />} /> 
+            <Route path="/pago/:idInscripcion/subir" element={<PagoSubirPage />} />
+            <Route path="/mis-cursos" element={<MisCursosPage />} />
             <Route path="/dashboard" element={<DashboardPage />} />
-            
+            <Route path="/pagos" element={<AprobacionPagosPage />} />
+
             {/* Fíjate que ya no pasamos auth={...} */}
             <Route path="/cursos" element={<CursosListPage />} />
             <Route path="/cursos/nuevo" element={<CursosCreatePage />} />

@@ -64,6 +64,11 @@ export const API = {
     const res = await fetch(`/api/usuarios/${cedula}/activar`, { method: 'PUT', headers: getAuthHeaders() });
     return await handleResponse(res);
   },
+  // ===================== Usuario - Mis Cursos =====================
+  async getUserCourses() {
+    const res = await fetch(`/api/usuarios/mis-cursos`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
 
   // ===================== Cursos =====================
   async listCursos(params = {}) {
@@ -92,6 +97,7 @@ export const API = {
     const res = await fetch(`/api/cursos/${id}/activar`, { method: 'PUT', headers: getAuthHeaders() });
     return await handleResponse(res);
   },
+  
 
   // ===================== Encargados del curso =====================
   async listEncargados(id) {
@@ -113,8 +119,10 @@ export const API = {
 
   // ===================== Inscripciones =====================
   async listInscripciones(params = {}) {
-    const query = new URLSearchParams(params).toString();
-    const res = await fetch(`/api/inscripciones${query ? `?${query}` : ''}`, { headers: getAuthHeaders() });
+    const { misCursos, ...rest } = params || {};
+    const query = new URLSearchParams(rest).toString();
+    const base = misCursos ? '/api/inscripciones/mis-cursos' : '/api/inscripciones';
+    const res = await fetch(`${base}${query ? `?${query}` : ''}`, { headers: getAuthHeaders() });
     return await handleResponse(res);
   },
   async getInscripcion(id) {
@@ -158,6 +166,38 @@ export const API = {
   },
   async getSolicitudesStats() {
     const res = await fetch(`/api/solicitudes/stats`, { headers: getPublicHeaders() });
+    return await handleResponse(res);
+  },
+  // ===================== Pagos =====================
+  async uploadComprobante(idInscripcion, file) {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('comprobante', file); // 'comprobante' es el nombre del campo que espera Multer en el Backend
+
+    const res = await fetch(`/api/pagos/upload/${idInscripcion}`, {
+      method: 'POST',
+      headers: {
+        // Importante: No incluir 'Content-Type': 'application/json' al enviar FormData
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+    return await handleResponse(res);
+  },
+  async listPendingPayments() {
+    const res = await fetch(`/api/pagos`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
+  async getOrdenPago(idInscripcion) {
+    const res = await fetch(`/api/pagos/orden/${idInscripcion}`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
+  async approvePayment(idPago) {
+    const res = await fetch(`/api/pagos/${idPago}/aprobar`, { 
+      method: 'PUT', 
+      headers: getAuthHeaders(),
+      body: JSON.stringify({}) 
+    });
     return await handleResponse(res);
   }
 };

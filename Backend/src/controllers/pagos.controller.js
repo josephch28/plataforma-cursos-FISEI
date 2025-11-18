@@ -144,18 +144,29 @@ exports.listPending = async (req, res) => {
     try {
         const [rows] = await pool.query(`
             SELECT 
-                p.id_pago, p.monto, p.metodo_pago, p.numero_orden,
-                p.comprobante_pdf, p.fecha_pago,
-                i.cedula_usuario, c.nombre as curso_nombre
+                p.id_pago, 
+                p.monto, 
+                p.metodo_pago, 
+                p.numero_orden,
+                p.comprobante_pdf, 
+                p.fecha_pago,
+                i.cedula_usuario, 
+                c.nombre as curso_nombre
             FROM pago p
-            JOIN inscripcion i ON i.id_inscripcion = p.id_inscripcion
-            JOIN curso c ON c.id_curso = i.id_curso
-            WHERE p.aprobado = 0
-            ORDER BY p.fecha_pago ASC
+            INNER JOIN inscripcion i ON i.id_inscripcion = p.id_inscripcion
+            INNER JOIN curso c ON c.id_curso = i.id_curso
+            WHERE p.aprobado = 0 OR p.aprobado IS NULL
+            ORDER BY COALESCE(p.fecha_pago, p.created_at) ASC
         `);
-        res.json(rows);
+        res.json(rows || []);
     } catch (error) {
-        res.status(500).json({ message: 'Error al listar pagos pendientes' });
+        console.error('Error al listar pagos pendientes:', error);
+        console.error('Stack trace:', error.stack);
+        res.status(500).json({ 
+            message: 'Error al listar pagos pendientes',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+            sqlError: process.env.NODE_ENV === 'development' ? error.sqlMessage : undefined
+        });
     }
 };
 

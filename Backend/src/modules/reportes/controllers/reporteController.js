@@ -47,7 +47,7 @@ class ReporteController {
       
       if (formato === 'excel' || formato === 'xlsx') {
         // Generar reporte en Excel
-        const buffer = excelService.generarReporteEstudiantes(estudiantes, datosCurso.nombre);
+        const buffer = await excelService.generarReporteEstudiantes(estudiantes, datosCurso.nombre);
         
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename=reporte_curso_${cursoId}.xlsx`);

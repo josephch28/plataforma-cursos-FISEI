@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 
 const isTenDigits = (v) => /^[0-9]{10}$/.test(v || '');
 
-export default function FormUsuario({ initial = {}, onSaved, auth }) {
+export default function FormUsuario({ initial = {}, onSaved }) { // <-- SIN auth
   const isUpdate = !!initial.cedula;
   const [data, setData] = useState({
     cedula: initial.cedula || '',
@@ -55,11 +55,11 @@ export default function FormUsuario({ initial = {}, onSaved, auth }) {
       }
       
       if (isUpdate) {
-        await API.updateUsuario(initial.cedula, payload, auth);
+        await API.updateUsuario(initial.cedula, payload); // <-- SIN auth
         setMensaje({ tipo: 'exito', texto: 'Usuario actualizado correctamente.' });
       } else {
         payload.cedula = data.cedula;
-        await API.createUsuario(payload, auth);
+        await API.createUsuario(payload); // <-- SIN auth
         setMensaje({ tipo: 'exito', texto: 'Usuario creado correctamente.' });
         // Limpiar campos para nueva entrada
         setData({ cedula: '', nombre: '', apellido: '', email: '', rol: 'usuario', password: '' });

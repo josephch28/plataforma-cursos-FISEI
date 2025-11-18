@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { API } from '../../services/api';
 
-export default function TablaCursos({ onEdit, auth, showInactive = false }) {
+export default function TablaCursos({ onEdit, showInactive = false }) {
   const [rows, setRows] = useState([]);
   const [q, setQ] = useState('');
   const [pag, setPag] = useState(1);
@@ -46,7 +46,7 @@ export default function TablaCursos({ onEdit, auth, showInactive = false }) {
 
   const executeDelete = async () => {
     try {
-      await API.deleteCurso(deleteModal, auth);
+      await API.deleteCurso(deleteModal);
       setDeleteModal(null);
       await load();
     } catch (e) {
@@ -57,7 +57,7 @@ export default function TablaCursos({ onEdit, auth, showInactive = false }) {
 
   const executeActivate = async () => {
     try {
-      await API.activateCurso(activateModal, auth);
+      await API.activateCurso(activateModal);
       setActivateModal(null);
       await load();
     } catch (e) {

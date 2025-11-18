@@ -2,7 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import FormEvaluacion from './FormEvaluacion';
 
-export default function EvaluacionesCreatePage({ auth }) {
+export default function EvaluacionesCreatePage() {
   const nav = useNavigate();
 
   return (
@@ -18,7 +18,7 @@ export default function EvaluacionesCreatePage({ auth }) {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <FormEvaluacion initial={{}} auth={auth} onSaved={() => nav('/evaluaciones')} />
+        <FormEvaluacion initial={{}} onSaved={() => nav('/evaluaciones')} />
       </div>
     </div>
   );

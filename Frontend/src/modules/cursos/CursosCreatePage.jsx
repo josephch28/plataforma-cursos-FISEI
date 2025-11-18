@@ -2,7 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import FormCurso from './FormCurso';
 
-export default function CursosCreatePage({ auth }) {
+export default function CursosCreatePage() { // <-- SIN {auth}
   const nav = useNavigate();
 
   return (
@@ -18,7 +18,7 @@ export default function CursosCreatePage({ auth }) {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <FormCurso initial={{}} auth={auth} onSaved={() => nav('/cursos')} />
+        <FormCurso initial={{}} onSaved={() => nav('/cursos')} /> {/* <-- SIN auth={auth} */}
       </div>
     </div>
   );

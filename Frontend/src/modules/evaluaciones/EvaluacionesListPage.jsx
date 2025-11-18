@@ -3,7 +3,7 @@ import { API } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import TablaEvaluaciones from './TablaEvaluaciones';
 
-export default function EvaluacionesListPage({ auth }) {
+export default function EvaluacionesListPage() {
   const [rows, setRows] = useState([]);
   const [q, setQ] = useState('');
   const [pag, setPag] = useState(1);
@@ -45,7 +45,7 @@ export default function EvaluacionesListPage({ auth }) {
     setShowConfirm(false);
     if (toDeleteId) {
       setLoading(true);
-      await API.deleteInscripcion(toDeleteId, auth);
+      await API.deleteInscripcion(toDeleteId);
       setRows(rows => rows.filter(r => r.id_inscripcion !== toDeleteId));
       setLoading(false);
       setToDeleteId(null);

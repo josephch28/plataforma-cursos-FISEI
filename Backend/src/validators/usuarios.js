@@ -3,6 +3,7 @@
 const isTenDigits = v => typeof v === 'string' && /^[0-9]{10}$/.test(v);
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const validRoles = ['admin', 'responsable', 'usuario'];
+const checkBoolean = (v) => v === true || v === false || v === 1 || v === 0 || v === 'true' || v === 'false';
 
 exports.createUsuario = (req) => {
   const b = req.body;
@@ -14,7 +15,8 @@ exports.createUsuario = (req) => {
   if (!b.email || !emailRegex.test(b.email)) errs.push('email: formato inválido');
   if (!b.rol || !validRoles.includes(b.rol)) errs.push('rol: inválido. Debe ser admin, responsable o usuario');
   if (!b.password || b.password.length < 6) errs.push('password: mínimo 6 caracteres');
-
+  if ('es_estudiante_uta' in b && !checkBoolean(b.es_estudiante_uta)) errs.push('es_estudiante_uta: debe ser booleano');
+  if ('es_personal_uta' in b && !checkBoolean(b.es_personal_uta)) errs.push('es_personal_uta: debe ser booleano');
   return errs.length ? { error: errs } : { value: b };
 };
 
@@ -45,7 +47,15 @@ exports.updateUsuario = (req) => {
       if (b.password.length < 6) errs.push('password: si se proporciona, mínimo 6 caracteres');
       fields.password = b.password; hasFieldToUpdate = true;
     }
-    
+    if ('es_estudiante_uta' in b) {
+      if (!checkBoolean(b.es_estudiante_uta)) errs.push('es_estudiante_uta: debe ser booleano');
+      fields.es_estudiante_uta = b.es_estudiante_uta; hasFieldToUpdate = true;
+    }
+    if ('es_personal_uta' in b) {
+      if (!checkBoolean(b.es_personal_uta)) errs.push('es_personal_uta: debe ser booleano');
+      fields.es_personal_uta = b.es_personal_uta; hasFieldToUpdate = true;
+    }
+
     if (!hasFieldToUpdate) errs.push('Nada para actualizar');
 
     return errs.length ? { error: errs } : { value: fields };

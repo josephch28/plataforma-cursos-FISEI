@@ -25,7 +25,8 @@ exports.list = async (req, res) => {
     // Usamos un placeholder (?) para pasar el valor numérico, 
     // garantizando que MySQL filtre correctamente.
     const [rows] = await pool.query(
-      'SELECT cedula, nombre, apellido, email, rol, activo FROM usuario WHERE activo = ?',
+      // [MODIFICADO] Agregar los nuevos campos
+      'SELECT cedula, nombre, apellido, email, rol, es_estudiante_uta, es_personal_uta, activo FROM usuario WHERE activo = ?',
       [activeValue]
     ); 
     
@@ -39,7 +40,7 @@ exports.list = async (req, res) => {
 exports.get = async (req, res) => {
   try {
     // Obtener usuario independientemente de su estado (activo/inactivo)
-    const [rows] = await pool.query('SELECT cedula, nombre, apellido, email, rol, activo FROM usuario WHERE cedula = ?', [req.params.cedula]);
+    const [rows] = await pool.query('SELECT cedula, nombre, apellido, email, rol, es_estudiante_uta, es_personal_uta, activo FROM usuario WHERE cedula = ?', [req.params.cedula]);
     if (!rows.length) return res.status(404).json({ message: 'Usuario no encontrado' });
     res.json(sanitizeUser(rows[0]));
   } catch (err) {
@@ -49,21 +50,30 @@ exports.get = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { cedula, nombre, apellido, email, rol, password } = req.validated;
+    const { cedula, nombre, apellido, email, rol, password, es_estudiante_uta, es_personal_uta } = req.validated;
     const rolNormalized = (rol || '').toLowerCase();
+
+    const [cedulaCheck] = await pool.query('SELECT cedula FROM usuario WHERE cedula = ?', [cedula]);
+    if (cedulaCheck.length) {
+      return res.status(409).json({ message: 'El usuario con esa cédula ya existe' });
+    }
+
+    const [emailCheck] = await pool.query('SELECT email FROM usuario WHERE email = ?', [email]);
+    if (emailCheck.length) {
+      return res.status(409).json({ message: 'El usuario con ese email ya existe' });
+    }
 
     const bcrypt = require('bcrypt');
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
-
     // NOTA: El password DEBE ser hasheado con bcrypt en producción.
     await pool.query(
-    'INSERT INTO usuario (cedula, nombre, apellido, email, rol, password, activo) VALUES (?, ?, ?, ?, ?, ?, 1)',
-    // Usar hashedPassword en lugar de password
-    [cedula, nombre, apellido, email, rolNormalized, hashedPassword] 
+    'INSERT INTO usuario (cedula, nombre, apellido, email, rol, es_estudiante_uta, es_personal_uta, password, activo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)',
+    // Usar !! para asegurar que los booleanos se guardan como 0 o 1 (TINYINT)
+    [cedula, nombre, apellido, email, rolNormalized, !!es_estudiante_uta, !!es_personal_uta, hashedPassword] 
   );
     
-    const [row] = await pool.query('SELECT cedula, nombre, apellido, email, rol, activo FROM usuario WHERE cedula = ?', [cedula]);
+    const [row] = await pool.query('SELECT cedula, nombre, apellido, email, rol, es_estudiante_uta, es_personal_uta, activo FROM usuario WHERE cedula = ?', [cedula]);
     res.status(201).json(sanitizeUser(row[0]));
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
@@ -77,6 +87,17 @@ exports.update = async (req, res) => {
   try {
     const b = req.validated;
     const { cedula } = req.params;
+
+    if (b.email) {
+        const [emailCheck] = await pool.query(
+            // Busca si existe el email, EXCLUYENDO la cédula del usuario actual
+            'SELECT email FROM usuario WHERE email = ? AND cedula != ?', 
+            [b.email, cedula]
+        );
+        if (emailCheck.length) {
+            return res.status(409).json({ message: 'El email ya está registrado para otro usuario' });
+        }
+    }
     
     // ¡NUEVO! Importar bcrypt aquí también
     const bcrypt = require('bcrypt'); 
@@ -99,19 +120,20 @@ exports.update = async (req, res) => {
         fields.push('rol = ?');
         params.push(b[k].toLowerCase());
 
+      } else if (k === 'es_estudiante_uta' || k === 'es_personal_uta') {
+        fields.push(`${k} = ?`);
+        params.push(!!b[k]); // Asegura que se guarde 0 o 1
       } else {
         // 3. Para todo lo demás (nombre, email, etc.)
         fields.push(`${k} = ?`);
         params.push(b[k]);
       }
     }
-    
-    if (!fields.length) return res.status(400).json({ message: 'Nada para actualizar' });
-    
+        
     params.push(cedula); // Añadir la cédula al final para el WHERE
     await pool.query(`UPDATE usuario SET ${fields.join(', ')} WHERE cedula = ?`, params);
     
-    const [row] = await pool.query('SELECT cedula, nombre, apellido, email, rol, activo FROM usuario WHERE cedula = ?', [cedula]);
+    const [row] = await pool.query('SELECT cedula, nombre, apellido, email, rol, es_estudiante_uta, es_personal_uta, activo FROM usuario WHERE cedula = ?', [cedula]);
     res.json(sanitizeUser(row[0]));
   } catch (error) {
     console.error('Error en update:', error); // Mejor log de error

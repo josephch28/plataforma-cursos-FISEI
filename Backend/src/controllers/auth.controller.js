@@ -63,3 +63,38 @@ exports.login = async (req, res) => {
     res.status(500).json({ message: 'Error al iniciar sesión' });
   }
 };
+
+// Registro público de usuario (para la página de registro)
+exports.register = async (req, res) => {
+  try {
+    const { cedula, nombre, apellido, email, password, es_estudiante_uta = false, es_personal_uta = false } = req.body;
+
+    if (!cedula || !nombre || !apellido || !email || !password) {
+      return res.status(400).json({ message: 'Faltan campos requeridos' });
+    }
+
+    // Comprobar duplicados por cédula o email
+    const [cedulaCheck] = await pool.query('SELECT id FROM usuario WHERE cedula = ?', [cedula]);
+    if (cedulaCheck.length) return res.status(409).json({ message: 'Cédula ya registrada' });
+
+    const [emailCheck] = await pool.query('SELECT id FROM usuario WHERE email = ?', [email]);
+    if (emailCheck.length) return res.status(409).json({ message: 'Email ya registrado' });
+
+    const bcrypt = require('bcrypt');
+    const salt = await bcrypt.genSalt(10);
+    const hashed = await bcrypt.hash(password, salt);
+
+    const rol = 'usuario';
+
+    await pool.query(
+      'INSERT INTO usuario (cedula, nombre, apellido, email, rol, es_estudiante_uta, es_personal_uta, password, activo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)',
+      [cedula, nombre, apellido, email, rol, !!es_estudiante_uta, !!es_personal_uta, hashed]
+    );
+
+    const [row] = await pool.query('SELECT cedula, nombre, apellido, email, rol, es_estudiante_uta, es_personal_uta, activo FROM usuario WHERE cedula = ?', [cedula]);
+    res.status(201).json(row[0]);
+  } catch (error) {
+    console.error('Error register:', error);
+    res.status(500).json({ message: 'Error al crear usuario' });
+  }
+};

@@ -4,7 +4,7 @@ import FormCurso from './FormCurso';
 import { useNavigate, useParams } from 'react-router-dom';
 import { API } from '../../services/api';
 
-export default function CursosEditPage({ auth }) {
+export default function CursosEditPage() { // <-- SIN {auth}
   const { id } = useParams();
   const nav = useNavigate();
   const [curso, setCurso] = useState(null);
@@ -37,7 +37,7 @@ export default function CursosEditPage({ auth }) {
     <div>
       <h1 className="text-3xl font-semibold text-gray-900 mb-6">Editar curso</h1>
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <FormCurso initial={curso} auth={auth} onSaved={() => nav('/cursos')} />
+        <FormCurso initial={curso} onSaved={() => nav('/cursos')} /> {/* <-- SIN auth={auth} */}
       </div>
     </div>
   );

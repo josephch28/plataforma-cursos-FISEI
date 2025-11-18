@@ -4,7 +4,7 @@ import { API } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import Select from 'react-select';
 
-export default function FormEvaluacion({ initial = {}, onSaved, auth }) {
+export default function FormEvaluacion({ initial = {}, onSaved }) {
   const [data, setData] = useState({
     cedula_usuario: initial.cedula_usuario || '',
     id_curso: initial.id_curso || '',
@@ -43,10 +43,10 @@ export default function FormEvaluacion({ initial = {}, onSaved, auth }) {
     setBusy(true);
     try {
       if (initial.id_inscripcion) {
-        await API.updateInscripcion(initial.id_inscripcion, data, auth);
+        await API.updateInscripcion(initial.id_inscripcion, data);
         setMensaje({ tipo: 'exito', texto: 'Evaluación actualizada correctamente.' });
       } else {
-        await API.createInscripcion(data, auth);
+        await API.createInscripcion(data);
         setMensaje({ tipo: 'exito', texto: 'Evaluación creada correctamente.' });
         // Limpiar campos tras guardar
         setData({

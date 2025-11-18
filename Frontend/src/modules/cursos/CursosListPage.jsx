@@ -3,7 +3,7 @@ import { useState } from 'react';
 import TablaCursos from './TablaCursos';
 import { useNavigate } from 'react-router-dom';
 
-export default function CursosListPage({ auth }) {
+export default function CursosListPage() { // <-- SIN {auth}
   const nav = useNavigate();
   const [tab, setTab] = useState('activos');
 
@@ -50,7 +50,7 @@ export default function CursosListPage({ auth }) {
         <TablaCursos
           onEdit={(r) => nav(`/cursos/${r.id_curso}/editar`)}
           onManageEnc={() => {}}
-          auth={auth}
+          // auth={auth} <-- ELIMINADO
           showInactive={tab === 'desactivados'}
         />
       </div>

@@ -2,13 +2,16 @@
 const express = require('express');
 const ctrl = require('../controllers/inscripcion.controller');
 const validate = require('../middlewares/validate');
-const { createEvaluacion } = require('../validators/evaluaciones');
+const auth = require('../middlewares/auth');
+const { createInscripcion, updateInscripcion } = require('../validators/inscripciones');
+
 const router = express.Router();
 
-router.get('/', ctrl.list);
-router.post('/', validate(createEvaluacion), ctrl.create);
-router.put('/:id', validate(createEvaluacion), ctrl.update);
-router.delete('/:id', ctrl.remove);
-router.get('/:id', ctrl.getOne);
+router.get('/', auth('admin'), ctrl.list);
+router.get('/mis-cursos', auth(), ctrl.listByDocente);
+router.post('/', auth(), validate(createInscripcion), ctrl.create);
+router.put('/:id', auth(), validate(updateInscripcion), ctrl.update);
+router.delete('/:id', auth('admin'), ctrl.remove);
+router.get('/:id', auth(), ctrl.getOne);
 
 module.exports = router;

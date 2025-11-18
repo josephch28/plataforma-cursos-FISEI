@@ -4,7 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { API } from '../../services/api';
 import FormEvaluacion from './FormEvaluacion';
 
-export default function EvaluacionesEditPage({ auth }) {
+export default function EvaluacionesEditPage() {
   const { id } = useParams();
   const nav = useNavigate();
   const [evaluacion, setEvaluacion] = useState(null);
@@ -37,7 +37,7 @@ export default function EvaluacionesEditPage({ auth }) {
     <div>
       <h1 className="text-3xl font-semibold text-gray-900 mb-6">Editar evaluación</h1>
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <FormEvaluacion initial={evaluacion || {}} auth={auth} onSaved={() => nav('/evaluaciones')} />
+        <FormEvaluacion initial={evaluacion || {}} onSaved={() => nav('/evaluaciones')} />
       </div>
     </div>
   );

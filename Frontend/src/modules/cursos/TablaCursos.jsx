@@ -1,5 +1,5 @@
-// src/modules/cursos/TablaCursos.jsx - CON BÚSQUEDA EN TIEMPO REAL
-import { useEffect, useState } from 'react';
+// src/modules/cursos/TablaCursos.jsx - CON BÚSQUEDA + FILTROS SIN CAMBIAR ESTILO
+import { useEffect, useMemo, useState } from 'react';
 import { API } from '../../services/api';
 
 export default function TablaCursos({ onEdit, showInactive = false }) {
@@ -11,11 +11,45 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
   const [deleteModal, setDeleteModal] = useState(null);
   const [activateModal, setActivateModal] = useState(null);
 
+  // Filtros (debajo del input para no afectar cabecera ni tabla)
+  const [horasFiltro, setHorasFiltro] = useState('');      // '', lt10, b10_20, b20_30, gt30
+  const [tipoFiltro, setTipoFiltro] = useState('');        // '', Curso, Webinar, Taller
+  const [publicoFiltro, setPublicoFiltro] = useState('');  // '', Estudiantes UTA, Personal UTA, Público General
+
+  // Paginación segura
+  const hasNext = useMemo(() => rows.length === Number(size), [rows, size]);
+  const hasPrev = useMemo(() => pag > 1, [pag]);
+
+  const buildParams = () => {
+    const params = { q, pag, size, inactivo: showInactive };
+    if (tipoFiltro) params.tipo = tipoFiltro;
+    if (publicoFiltro) params.publico_objetivo = publicoFiltro;
+
+    // Mapear horas a horas_min/horas_max
+    if (horasFiltro === 'lt10') {
+      params.horas_max = 9;
+    } else if (horasFiltro === 'b10_20') {
+      params.horas_min = 10;
+      params.horas_max = 20;
+    } else if (horasFiltro === 'b20_30') {
+      params.horas_min = 20;
+      params.horas_max = 30;
+    } else if (horasFiltro === 'gt30') {
+      params.horas_min = 31;
+    }
+    return params;
+  };
+
   const load = async () => {
     setLoading(true);
     try {
-      const data = await API.listCursos({ q, pag, size, inactivo: showInactive });
-      setRows(data);
+      const data = await API.listCursos(buildParams());
+      // Si la página actual queda vacía y no es la primera, retroceder una
+      if (Array.isArray(data) && data.length === 0 && pag > 1) {
+        setPag((p) => Math.max(1, p - 1));
+      } else {
+        setRows(Array.isArray(data) ? data : []);
+      }
     } finally {
       setLoading(false);
     }
@@ -24,25 +58,29 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
   // Cargar al montar y cuando cambian pag, size, showInactive
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pag, size, showInactive]);
 
-  // ✅ BÚSQUEDA EN TIEMPO REAL CON DEBOUNCE
+  // Búsqueda con debounce
   useEffect(() => {
     const timer = setTimeout(() => {
-      setPag(1); // Resetear a página 1 al buscar
+      setPag(1);
       load();
-    }, 500); // Espera 500ms después de que el usuario deja de escribir
-
+    }, 500);
     return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [q]);
 
-  const confirmDelete = (id) => {
-    setDeleteModal(id);
-  };
+  // Reconsultar al cambiar filtros (reset a página 1)
+  useEffect(() => {
+    setPag(1);
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [horasFiltro, tipoFiltro, publicoFiltro]);
 
-  const confirmActivate = (id) => {
-    setActivateModal(id);
-  };
+  // Handlers
+  const confirmDelete = (id) => setDeleteModal(id);
+  const confirmActivate = (id) => setActivateModal(id);
 
   const executeDelete = async () => {
     try {
@@ -68,7 +106,7 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
 
   return (
     <div>
-      {/* BARRA DE BÚSQUEDA - SIN BOTÓN, BÚSQUEDA AUTOMÁTICA */}
+      {/* BARRA DE BÚSQUEDA */}
       <div className="p-4 border-b border-gray-200">
         <input
           value={q}
@@ -78,6 +116,44 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
         />
       </div>
 
+      {/* Filtros compactos debajo del buscador */}
+      <div className="px-4 py-3 border-b border-gray-200 flex flex-wrap items-center gap-3">
+        <select
+          className="rounded border border-gray-300 px-2 py-1 text-sm"
+          value={horasFiltro}
+          onChange={(e) => setHorasFiltro(e.target.value)}
+        >
+          <option value="">Horas: Todas</option>
+          <option value="lt10">Menos de 10</option>
+          <option value="b10_20">Entre 10 y 20</option>
+          <option value="b20_30">Entre 20 y 30</option>
+          <option value="gt30">Mayor de 30</option>
+        </select>
+
+        <select
+          className="rounded border border-gray-300 px-2 py-1 text-sm"
+          value={tipoFiltro}
+          onChange={(e) => setTipoFiltro(e.target.value)}
+        >
+          <option value="">Tipo: Todos</option>
+          <option value="Curso">Curso</option>
+          <option value="Webinar">Webinar</option>
+          <option value="Taller">Taller</option>
+        </select>
+
+        <select
+          className="rounded border border-gray-300 px-2 py-1 text-sm"
+          value={publicoFiltro}
+          onChange={(e) => setPublicoFiltro(e.target.value)}
+        >
+          <option value="">Público: Todos</option>
+          <option value="Estudiantes UTA">Estudiantes UTA</option>
+          <option value="Personal UTA">Personal UTA</option>
+          <option value="Público General">Público General</option>
+        </select>
+      </div>
+
+      {/* TABLA */}
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -139,6 +215,7 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
                 </td>
               </tr>
             ))}
+
             {!rows.length && !loading && (
               <tr>
                 <td className="px-6 py-8 text-center text-gray-500" colSpan={6}>
@@ -157,6 +234,7 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
         </table>
       </div>
 
+      {/* Paginación: misma UI, con validación de siguiente */}
       <div className="px-4 py-4 flex items-center justify-between border-t border-gray-200">
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-600">Tamaño:</span>
@@ -175,23 +253,24 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
         </div>
         <div className="flex items-center gap-3">
           <button
-            disabled={pag === 1}
-            onClick={() => setPag(pag - 1)}
+            disabled={!hasPrev}
+            onClick={() => setPag((p) => Math.max(1, p - 1))}
             className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition"
           >
             Anterior
           </button>
           <span className="text-sm text-gray-600">Página {pag}</span>
           <button
-            onClick={() => setPag(pag + 1)}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
+            onClick={() => hasNext && setPag((p) => p + 1)}
+            disabled={!hasNext || loading || rows.length === 0}
+            className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition"
           >
             Siguiente
           </button>
         </div>
       </div>
 
-      {/* MODAL DESACTIVAR */}
+      {/* MODALES */}
       {deleteModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
@@ -219,7 +298,6 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
         </div>
       )}
 
-      {/* MODAL ACTIVAR */}
       {activateModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">

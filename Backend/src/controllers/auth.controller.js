@@ -52,7 +52,9 @@ exports.login = async (req, res) => {
         nombre: user.nombre,
         apellido: user.apellido,
         email: user.email,
-        rol: user.rol
+        rol: user.rol,
+        es_estudiante_uta: !!user.es_estudiante_uta,
+        es_personal_uta: !!user.es_personal_uta
       }
     });
 

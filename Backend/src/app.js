@@ -19,6 +19,7 @@ app.use('/api/usuarios', usuariosRoutes);
 const solicitudesRoutes = require('./routes/solicitudes.routes');
 app.use('/api/solicitudes', solicitudesRoutes);
 app.use('/api/pagos', require('./routes/pagos.routes'));
+app.use('/api/dashboard', require('./routes/dashboard.routes'));
 
 app.use((err, req, res, next) => {
   console.error(err);

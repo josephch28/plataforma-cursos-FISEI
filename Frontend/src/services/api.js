@@ -117,6 +117,23 @@ export const API = {
     return await handleResponse(res);
   },
 
+  async getGeneralStats() {
+    const res = await fetch(`/api/dashboard/general`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
+
+  // ===================== Dashboard - gráficos y tendencias =====================
+  async getDashboardTrends() {
+    // Espera un array como: [{ date: '2025-11-01', inscripciones: 3, usuarios: 2 }, ...]
+    const res = await fetch(`/api/dashboard/trends`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
+  async getDashboardDistribution() {
+    // Espera un objeto o array para distribución (por ejemplo cursos por categoría)
+    const res = await fetch(`/api/dashboard/distribution`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
+
   // ===================== Inscripciones =====================
   async listInscripciones(params = {}) {
     const { misCursos, ...rest } = params || {};
@@ -200,4 +217,6 @@ export const API = {
     });
     return await handleResponse(res);
   }
+  
+  
 };

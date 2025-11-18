@@ -1,24 +1,46 @@
 // src/layouts/AppLayout.jsx
-import { NavLink, Outlet } from 'react-router-dom';
-import { HiOutlineUserGroup, HiOutlineBookOpen, HiOutlineClipboardList, HiOutlineCheckCircle, HiOutlineHome } from 'react-icons/hi';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { HiOutlineUserGroup, HiOutlineBookOpen, HiOutlineClipboardList, HiOutlineCheckCircle, HiOutlineHome, HiOutlineLogout } from 'react-icons/hi';
+import { useAuth } from '../context/AuthContext';
 
-const menu = [
-  { key: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: HiOutlineHome },
-  { key: 'usuarios', label: 'Usuarios', to: '/usuarios', icon: HiOutlineUserGroup },
-  { key: 'cursos', label: 'Cursos', to: '/cursos', icon: HiOutlineBookOpen },
-  { key: 'inscripciones', label: 'Inscripciones', to: '/inscripciones', icon: HiOutlineClipboardList },
-  { key: 'evaluaciones', label: 'Evaluaciones', to: '/evaluaciones', icon: HiOutlineCheckCircle }
+const allMenuItems = [
+  { key: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: HiOutlineHome, roles: ['admin', 'develop'] },
+  { key: 'catalogo', label: 'Cursos (Catálogo)', to: '/catalogo', icon: HiOutlineBookOpen, roles: ['usuario'] },
+  { key: 'mis-cursos', label: 'Mis Cursos', to: '/mis-cursos', icon: HiOutlineClipboardList, roles: ['usuario', 'responsable'] },
+  { key: 'pagos', label: 'Aprobación Pagos', to: '/pagos', icon: HiOutlineCheckCircle, roles: ['admin'] },
+  { key: 'usuarios', label: 'Usuarios', to: '/usuarios', icon: HiOutlineUserGroup, roles: ['admin'] },
+  { key: 'cursos', label: 'Cursos', to: '/cursos', icon: HiOutlineBookOpen, roles: ['admin', 'responsable'] },
+  { key: 'inscripciones', label: 'Inscripciones', to: '/inscripciones', icon: HiOutlineClipboardList, roles: ['admin'] },
+  { key: 'evaluaciones', label: 'Evaluaciones', to: '/evaluaciones', icon: HiOutlineCheckCircle, roles: ['responsable', 'usuario'] },
+  { key: 'solicitudes', label: 'Solicitudes', to: '/solicitudes', icon: HiOutlineClipboardList, roles: ['develop'] }
 ];
 
 export default function AppLayout() {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+
+  // Filtrar menú según el rol del usuario
+  const menu = allMenuItems.filter(item => item.roles.includes(user?.rol));
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
   return (
     <div className="min-h-screen flex bg-gray-50">
       {/* Sidebar mejorado */}
-      <aside className="w-64 bg-white border-r border-gray-200 flex-shrink-0">
+      <aside className="w-64 bg-white border-r border-gray-200 flex-shrink-0 flex flex-col">
         <div className="p-6 border-b border-gray-100 mb-2">
           <h2 className="text-xl font-bold text-blue-700 tracking-wide">Panel de Administración</h2>
+          {user && (
+            <div className="mt-3 text-sm">
+              <p className="text-gray-700 font-medium">{user.nombre} {user.apellido}</p>
+              <p className="text-gray-500 text-xs capitalize">{user.rol}</p>
+            </div>
+          )}
         </div>
-        <nav className="flex flex-col px-3 space-y-1">
+        <nav className="flex flex-col px-3 space-y-1 flex-1">
           {menu.map(item => (
             <NavLink
               key={item.key}
@@ -45,6 +67,17 @@ export default function AppLayout() {
             </NavLink>
           ))}
         </nav>
+        
+        {/* Botón de Cerrar Sesión */}
+        <div className="p-3 border-t border-gray-200">
+          <button
+            onClick={handleLogout}
+            className="flex items-center w-full px-4 py-2.5 rounded-lg text-sm font-bold text-red-600 hover:bg-red-50 transition-all duration-150"
+          >
+            <HiOutlineLogout className="mr-2 text-lg" />
+            <span>Cerrar Sesión</span>
+          </button>
+        </div>
       </aside>
 
       {/* Área principal */}

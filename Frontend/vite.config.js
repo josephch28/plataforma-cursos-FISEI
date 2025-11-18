@@ -7,7 +7,9 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      '/api': { target: 'http://localhost:3000', changeOrigin: true }
+      '/api': { target: 'http://localhost:3000', changeOrigin: true },
+      // Proxy de archivos subidos (para que /uploads/... vaya al backend en dev)
+      '/uploads': { target: 'http://localhost:3000', changeOrigin: true }
     }
   }
 });

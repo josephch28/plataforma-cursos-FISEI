@@ -2,7 +2,7 @@
 import { useNavigate } from 'react-router-dom';
 import FormUsuario from './FormUsuario';
 
-export default function UsuariosCreatePage({ auth }) {
+export default function UsuariosCreatePage() { // <-- SIN {auth}
   const nav = useNavigate();
 
   return (
@@ -18,7 +18,7 @@ export default function UsuariosCreatePage({ auth }) {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <FormUsuario initial={{ rol: 'usuario' }} auth={auth} onSaved={() => nav('/usuarios')} />
+        <FormUsuario initial={{ rol: 'usuario' }} onSaved={() => nav('/usuarios')} /> {/* <-- SIN auth={auth} */}
       </div>
     </div>
   );

@@ -9,6 +9,7 @@ const router = express.Router();
 
 // Listar usuarios (Permitido para autocompletado en FormCurso, etc.)
 router.get('/', ctrl.list);
+router.get('/mis-cursos', auth(), ctrl.getUserCourses);
 
 // Rutas de administración (requieren rol 'admin')
 router.get('/:cedula', auth('admin'), ctrl.get);

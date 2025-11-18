@@ -1,8 +1,9 @@
+// Frontend/src/modules/usuarios/TablaUsuarios.jsx
 import { useEffect, useState } from 'react'; 
 import { API } from '../../services/api';
 
-// Props: onEdit, auth, showInactive (de UsuariosListPage), onAction (callback al modal)
-export default function TablaUsuarios({ onEdit, auth, showInactive = false, onAction }) {
+// Props: onEdit, showInactive, onAction
+export default function TablaUsuarios({ onEdit, showInactive = false, onAction }) { // <-- SIN auth
     const [rows, setRows] = useState([]);
     const [q, setQ] = useState('');
     const [loading, setLoading] = useState(false);

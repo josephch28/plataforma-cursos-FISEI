@@ -2,18 +2,22 @@
 import { useState } from 'react';
 import { API } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const isTenDigits = (v) => /^[0-9]{10}$/.test(v || '');
 
-export default function FormUsuario({ initial = {}, onSaved, auth }) {
+export default function FormUsuario({ initial = {}, onSaved }) { // <-- SIN auth
   const isUpdate = !!initial.cedula;
+  const { user } = useAuth();
   const [data, setData] = useState({
     cedula: initial.cedula || '',
     nombre: initial.nombre || '',
     apellido: initial.apellido || '',
     email: initial.email || '',
     rol: initial.rol || 'usuario',
-    password: '', 
+    password: '',
+    es_estudiante_uta: !!initial.es_estudiante_uta,
+    es_personal_uta: !!initial.es_personal_uta, 
   });
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
@@ -48,6 +52,8 @@ export default function FormUsuario({ initial = {}, onSaved, auth }) {
         apellido: data.apellido,
         email: data.email,
         rol: data.rol,
+        es_estudiante_uta: data.es_estudiante_uta,
+        es_personal_uta: data.es_personal_uta,
       };
 
       if (!isUpdate || data.password) {
@@ -55,11 +61,11 @@ export default function FormUsuario({ initial = {}, onSaved, auth }) {
       }
       
       if (isUpdate) {
-        await API.updateUsuario(initial.cedula, payload, auth);
+        await API.updateUsuario(initial.cedula, payload); // <-- SIN auth
         setMensaje({ tipo: 'exito', texto: 'Usuario actualizado correctamente.' });
       } else {
         payload.cedula = data.cedula;
-        await API.createUsuario(payload, auth);
+        await API.createUsuario(payload); // <-- SIN auth
         setMensaje({ tipo: 'exito', texto: 'Usuario creado correctamente.' });
         // Limpiar campos para nueva entrada
         setData({ cedula: '', nombre: '', apellido: '', email: '', rol: 'usuario', password: '' });
@@ -127,6 +133,31 @@ export default function FormUsuario({ initial = {}, onSaved, auth }) {
           <label className={labelClass}>Password {isUpdate && '(Dejar en blanco para no cambiar)'}</label>
           <input type="password" className={inputClass} value={data.password} onChange={(e) => setData({ ...data, password: e.target.value })} />
           {errors.password && <p className="text-red-600 text-sm mt-1">{errors.password}</p>}
+        </div>
+        <div className="md:col-span-2 pt-2">
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">Pertenencia a la UTA</h3>
+          <div className="flex gap-6">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                name="es_estudiante_uta"
+                checked={data.es_estudiante_uta}
+                onChange={(e) => setData({ ...data, es_estudiante_uta: e.target.checked })}
+                className="mr-2 w-4 h-4 text-blue-600"
+              />
+              <span className="text-gray-700">Es Estudiante UTA</span>
+            </label>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                name="es_personal_uta"
+                checked={data.es_personal_uta}
+                onChange={(e) => setData({ ...data, es_personal_uta: e.target.checked })}
+                className="mr-2 w-4 h-4 text-blue-600"
+              />
+              <span className="text-gray-700">Es Personal UTA</span>
+            </label>
+          </div>
         </div>
       </div>
 

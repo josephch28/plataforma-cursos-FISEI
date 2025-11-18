@@ -4,7 +4,7 @@ import FormUsuario from './FormUsuario';
 import { useNavigate, useParams } from 'react-router-dom';
 import { API } from '../../services/api';
 
-export default function UsuariosEditPage({ auth }) { // <-- DEBE INCLUIR 'export default' AQUÍ
+export default function UsuariosEditPage() { // <-- SIN {auth}
   const { cedula } = useParams();
   const nav = useNavigate();
   const [usuario, setUsuario] = useState(null);
@@ -13,7 +13,7 @@ export default function UsuariosEditPage({ auth }) { // <-- DEBE INCLUIR 'export
   useEffect(() => {
     const load = async () => {
       try {
-        const data = await API.getUsuario(cedula, auth);
+        const data = await API.getUsuario(cedula); // <-- SIN auth
         setUsuario(data);
       } catch {
         alert('Error al cargar usuario');
@@ -23,7 +23,7 @@ export default function UsuariosEditPage({ auth }) { // <-- DEBE INCLUIR 'export
       }
     };
     load();
-  }, [cedula, nav, auth]);
+  }, [cedula, nav]); // <-- SIN auth
 
   if (loading) {
     return (
@@ -37,7 +37,7 @@ export default function UsuariosEditPage({ auth }) { // <-- DEBE INCLUIR 'export
     <div>
       <h1 className="text-3xl font-semibold text-gray-900 mb-6">Editar Usuario: {usuario.nombre} {usuario.apellido}</h1>
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <FormUsuario initial={usuario} auth={auth} onSaved={() => nav('/usuarios')} />
+        <FormUsuario initial={usuario} onSaved={() => nav('/usuarios')} /> {/* <-- SIN auth={auth} */}
       </div>
     </div>
   );

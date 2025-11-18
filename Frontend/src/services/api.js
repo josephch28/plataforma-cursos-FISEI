@@ -1,179 +1,207 @@
 // src/services/api.js
 
-// Maneja respuestas JSON o texto y arroja errores legibles cuando la respuesta no es JSON.
+// Headers de autenticación (token + cabeceras útiles para backend)
+const getAuthHeaders = () => {
+  const token = localStorage.getItem('token');
+  const rol = localStorage.getItem('rol');          // opcional si lo guardas tras login
+  const cedula = localStorage.getItem('cedula');    // opcional si lo guardas tras login
+  return {
+    'Content-Type': 'application/json',
+    ...(token && { Authorization: `Bearer ${token}` }),
+    ...(rol && { 'x-user-rol': rol }),
+    ...(cedula && { 'x-user-cedula': cedula })
+  };
+};
+
+// Headers públicos (cuando la ruta no exige auth)
+const getPublicHeaders = () => ({ 'Content-Type': 'application/json' });
+
+// Manejo seguro: lee el cuerpo una sola vez
 const handleResponse = async (r) => {
+  const ct = r.headers.get('content-type') || '';
+  const isJson = ct.includes('application/json');
+  const body = isJson ? await r.json().catch(() => null) : await r.text().catch(() => '');
+
   if (r.ok) {
-    if (r.status === 204) return true;
-    const ct = r.headers.get('content-type') || '';
-    if (ct.includes('application/json')) return await r.json();
-    return await r.text();
+    return body ?? true; // 204 => true
   }
 
-  // Intentar parsear JSON de error, si no es JSON devolver texto plano
-  try {
-    const body = await r.json();
-    throw body;
-  } catch (e) {
-    const text = await r.text();
-    throw new Error(text || `HTTP ${r.status}`);
-  }
+  const message =
+    (isJson && body && (body.message || body.error)) ||
+    (typeof body === 'string' && body) ||
+    `HTTP ${r.status}`;
+
+  const err = new Error(message);
+  err.status = r.status;
+  err.body = body;
+  throw err;
 };
 
 export const API = {
-  // Usuarios API calls (Agregar al final de las funciones)
+  // ===================== Usuarios =====================
   async listUsuarios(params = {}) {
-  const query = new URLSearchParams(params).toString();
-  const res = await fetch(`/api/usuarios${query ? `?${query}` : ''}`);
-  return await handleResponse(res);
+    const query = new URLSearchParams(params).toString();
+    const res = await fetch(`/api/usuarios${query ? `?${query}` : ''}`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
   },
-  async getUsuario(cedula, auth) {
-    const r = await fetch(`/api/usuarios/${cedula}`, {
-        headers: { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula }
-    });
-    return await handleResponse(r);
+  async getUsuario(cedula) {
+    const res = await fetch(`/api/usuarios/${cedula}`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
   },
-  async createUsuario(data, auth) {
-    const r = await fetch(`/api/usuarios`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula },
-      body: JSON.stringify(data)
-    });
-    return await handleResponse(r);
+  async createUsuario(data) {
+    const res = await fetch(`/api/usuarios`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data) });
+    return await handleResponse(res);
   },
-  async updateUsuario(cedula, data, auth) {
-    const r = await fetch(`/api/usuarios/${cedula}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json', 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula },
-      body: JSON.stringify(data)
-    });
-    return await handleResponse(r);
+  async updateUsuario(cedula, data) {
+    const res = await fetch(`/api/usuarios/${cedula}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(data) });
+    return await handleResponse(res);
   },
-  async deleteUsuario(cedula, auth) {
-  const r = await fetch(`/api/usuarios/${cedula}`, {
-    method: 'DELETE',
-    headers: { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula }
-  });
-  return await handleResponse(r);
+  async deleteUsuario(cedula) {
+    const res = await fetch(`/api/usuarios/${cedula}`, { method: 'DELETE', headers: getAuthHeaders() });
+    return await handleResponse(res);
   },
-  async activateUsuario(cedula, auth) { // 🆕 NUEVO
-    const r = await fetch(`/api/usuarios/${cedula}/activar`, {
-      method: 'PUT',
-      headers: { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula }
-    });
-    return await handleResponse(r);
+  async activateUsuario(cedula) {
+    const res = await fetch(`/api/usuarios/${cedula}/activar`, { method: 'PUT', headers: getAuthHeaders() });
+    return await handleResponse(res);
   },
-  async getCurso(id) {
-    const r = await fetch(`/api/cursos/${id}`);
-    return await handleResponse(r);
-  },
-  async createCurso(data, auth) {
-    const r = await fetch(`/api/cursos`, {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json', 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula },
-      body: JSON.stringify(data)
-    });
-    return await handleResponse(r);
-  },
-  async updateCurso(id, data, auth) {
-    const r = await fetch(`/api/cursos/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type':'application/json', 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula },
-      body: JSON.stringify(data)
-    });
-    return await handleResponse(r);
-  },
-  async deleteCurso(id, auth) {
-    const r = await fetch(`/api/cursos/${id}`, {
-      method: 'DELETE',
-      headers: { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula }
-    });
-    return await handleResponse(r);
-  },
-  async activateCurso(id, auth) {
-    const r = await fetch(`/api/cursos/${id}/activar`, {
-      method: 'PUT',
-      headers: { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula }
-    });
-    return await handleResponse(r);
-  },
-  async listEncargados(id) {
-    const r = await fetch(`/api/cursos/${id}/encargados`);
-    return await handleResponse(r);
-  },
-  async addEncargado(id, cedula, auth) {
-    const r = await fetch(`/api/cursos/${id}/encargados`, {
-      method: 'POST',
-      headers: { 'Content-Type':'application/json', 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula },
-      body: JSON.stringify({ cedula_encargado: cedula })
-    });
-    return await handleResponse(r);
-  },
-  async removeEncargado(id, cedula, auth) {
-    const r = await fetch(`/api/cursos/${id}/encargados/${cedula}`, {
-      method: 'DELETE',
-      headers: { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula }
-    });
-    return await handleResponse(r);
+  // ===================== Usuario - Mis Cursos =====================
+  async getUserCourses() {
+    const res = await fetch(`/api/usuarios/mis-cursos`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
   },
 
-  // Inscripciones
-  async listInscripciones() {
-    const r = await fetch('/api/inscripciones');
-    if (!r.ok) throw new Error('Error al obtener inscripciones');
-    return r.json();
-  },
-  async createInscripcion(data, auth) {
-    const r = await fetch('/api/inscripciones', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(auth && { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula })
-      },
-      body: JSON.stringify(data)
-    });
-    if (!r.ok) throw new Error('Error al crear inscripción');
-    return r.json();
-  },
-  async updateInscripcion(id, data, auth) {
-    const r = await fetch(`/api/inscripciones/${id}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(auth && { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula })
-      },
-      body: JSON.stringify(data)
-    });
-    if (!r.ok) throw new Error('Error al actualizar inscripción');
-    return r.json();
-  },
-  async deleteInscripcion(id, auth) {
-    const r = await fetch(`/api/inscripciones/${id}`, {
-      method: 'DELETE',
-      headers: auth ? { 'x-user-rol': auth.rol, 'x-user-cedula': auth.cedula } : {}
-    });
-    if (!r.ok) throw new Error('Error al eliminar inscripción');
-    return r.json();
-  },
-  async getInscripcion(id) {
-    const r = await fetch(`/api/inscripciones/${id}`);
-    if (!r.ok) throw new Error('No encontrada');
-    return r.json();
-  },
-
-  // Listar cursos y usuarios para autocompletar
+  // ===================== Cursos =====================
   async listCursos(params = {}) {
     const query = new URLSearchParams(params).toString();
-    const res = await fetch(`/api/cursos${query ? `?${query}` : ''}`);
-    if (!res.ok) throw new Error('Error al obtener cursos');
-    return await res.json();
+    const res = await fetch(`/api/cursos${query ? `?${query}` : ''}`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
   },
-  // `listUsuarios` definido arriba (con `params`) maneja la obtención
-  // de usuarios y acepta filtros. Eliminamos la definición duplicada
-  // para evitar sobrescribirla.
+  async getCurso(id) {
+    const res = await fetch(`/api/cursos/${id}`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
+  async createCurso(body) {
+    const res = await fetch(`/api/cursos`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(body) });
+    return await handleResponse(res);
+  },
+  async updateCurso(id, body) {
+    const res = await fetch(`/api/cursos/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(body) });
+    return await handleResponse(res);
+  },
+  async deleteCurso(id) {
+    const res = await fetch(`/api/cursos/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
+  async activateCurso(id) {
+    const res = await fetch(`/api/cursos/${id}/activar`, { method: 'PUT', headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
 
-  // Reportes
+  // ===================== Encargados del curso =====================
+  async listEncargados(id) {
+    const res = await fetch(`/api/cursos/${id}/encargados`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
+  async addEncargado(id, cedula) {
+    const res = await fetch(`/api/cursos/${id}/encargados`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ cedula_encargado: cedula })
+    });
+    return await handleResponse(res);
+  },
+  async removeEncargado(id, cedula) {
+    const res = await fetch(`/api/cursos/${id}/encargados/${cedula}`, { method: 'DELETE', headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
+
+  // ===================== Inscripciones =====================
+  async listInscripciones(params = {}) {
+    const { misCursos, ...rest } = params || {};
+    const query = new URLSearchParams(rest).toString();
+    const base = misCursos ? '/api/inscripciones/mis-cursos' : '/api/inscripciones';
+    const res = await fetch(`${base}${query ? `?${query}` : ''}`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
+  async getInscripcion(id) {
+    const res = await fetch(`/api/inscripciones/${id}`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
+  async createInscripcion(data) {
+    const res = await fetch(`/api/inscripciones`, { method: 'POST', headers: getAuthHeaders(), body: JSON.stringify(data) });
+    return await handleResponse(res);
+  },
+  async updateInscripcion(id, data) {
+    const res = await fetch(`/api/inscripciones/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(data) });
+    return await handleResponse(res);
+  },
+  async deleteInscripcion(id) {
+    const res = await fetch(`/api/inscripciones/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
+
+  // ===================== Solicitudes =====================
+  async listSolicitudes(params = {}) {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetch(`/api/solicitudes${query ? `?${query}` : ''}`, { headers: getPublicHeaders() });
+    return await handleResponse(res);
+  },
+  async getSolicitud(id) {
+    const res = await fetch(`/api/solicitudes/${id}`, { headers: getPublicHeaders() });
+    return await handleResponse(res);
+  },
+  async createSolicitud(data) {
+    const res = await fetch(`/api/solicitudes`, { method: 'POST', headers: getPublicHeaders(), body: JSON.stringify(data) });
+    return await handleResponse(res);
+  },
+  async updateSolicitud(id, data) {
+    const res = await fetch(`/api/solicitudes/${id}`, { method: 'PUT', headers: getPublicHeaders(), body: JSON.stringify(data) });
+    return await handleResponse(res);
+  },
+  async deleteSolicitud(id) {
+    const res = await fetch(`/api/solicitudes/${id}`, { method: 'DELETE', headers: getPublicHeaders() });
+    return await handleResponse(res);
+  },
+  async getSolicitudesStats() {
+    const res = await fetch(`/api/solicitudes/stats`, { headers: getPublicHeaders() });
+    return await handleResponse(res);
+  },
+
+  // ===================== Pagos =====================
+  async uploadComprobante(idInscripcion, file) {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('comprobante', file);
+
+    const res = await fetch(`/api/pagos/upload/${idInscripcion}`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData,
+    });
+    return await handleResponse(res);
+  },
+  async listPendingPayments() {
+    const res = await fetch(`/api/pagos`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
+  async getOrdenPago(idInscripcion) {
+    const res = await fetch(`/api/pagos/orden/${idInscripcion}`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
+  async approvePayment(idPago) {
+    const res = await fetch(`/api/pagos/${idPago}/aprobar`, { 
+      method: 'PUT', 
+      headers: getAuthHeaders(),
+      body: JSON.stringify({}) 
+    });
+    return await handleResponse(res);
+  },
+
+  // ===================== Reportes =====================
   async generarCertificado(cursoId, estudianteId) {
-    const r = await fetch(`/api/reportes/certificado/${cursoId}/${estudianteId}`);
+    const r = await fetch(`/api/reportes/certificado/${cursoId}/${estudianteId}`, { headers: getAuthHeaders() });
     if (!r.ok) throw new Error('Error al generar certificado');
     const blob = await r.blob();
     const url = window.URL.createObjectURL(blob);
@@ -187,7 +215,7 @@ export const API = {
     return true;
   },
   async generarReportePDF(cursoId) {
-    const r = await fetch(`/api/reportes/curso/${cursoId}`);
+    const r = await fetch(`/api/reportes/curso/${cursoId}`, { headers: getAuthHeaders() });
     if (!r.ok) throw new Error('Error al generar reporte');
     const blob = await r.blob();
     const url = window.URL.createObjectURL(blob);
@@ -201,7 +229,7 @@ export const API = {
     return true;
   },
   async generarReporteExcel(cursoId) {
-    const r = await fetch(`/api/reportes/curso/${cursoId}?formato=excel`);
+    const r = await fetch(`/api/reportes/curso/${cursoId}?formato=excel`, { headers: getAuthHeaders() });
     if (!r.ok) throw new Error('Error al generar reporte');
     const blob = await r.blob();
     const url = window.URL.createObjectURL(blob);

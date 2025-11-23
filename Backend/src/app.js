@@ -16,6 +16,7 @@ const inscripcionRoutes = require('./routes/inscripcion.routes');
 app.use('/api/inscripciones', inscripcionRoutes);
 const usuariosRoutes = require('./routes/usuarios.routes');
 app.use('/api/usuarios', usuariosRoutes);
+app.use('/api/reportes', require('./modules/reportes/routes/reportes.routes'));
 const solicitudesRoutes = require('./routes/solicitudes.routes');
 app.use('/api/solicitudes', solicitudesRoutes);
 app.use('/api/pagos', require('./routes/pagos.routes'));

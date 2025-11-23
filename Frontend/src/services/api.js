@@ -93,11 +93,9 @@ export const API = {
     return await handleResponse(res);
   },
   async activateCurso(id) {
-    // Tu ruta final usa PUT /api/cursos/:id/activar
     const res = await fetch(`/api/cursos/${id}/activar`, { method: 'PUT', headers: getAuthHeaders() });
     return await handleResponse(res);
   },
-  
 
   // ===================== Encargados del curso =====================
   async listEncargados(id) {
@@ -142,7 +140,7 @@ export const API = {
     return await handleResponse(res);
   },
 
-  // ===================== Solicitudes (si son públicas) =====================
+  // ===================== Solicitudes =====================
   async listSolicitudes(params = {}) {
     const query = new URLSearchParams(params).toString();
     const res = await fetch(`/api/solicitudes${query ? `?${query}` : ''}`, { headers: getPublicHeaders() });
@@ -168,16 +166,16 @@ export const API = {
     const res = await fetch(`/api/solicitudes/stats`, { headers: getPublicHeaders() });
     return await handleResponse(res);
   },
+
   // ===================== Pagos =====================
   async uploadComprobante(idInscripcion, file) {
     const token = localStorage.getItem('token');
     const formData = new FormData();
-    formData.append('comprobante', file); // 'comprobante' es el nombre del campo que espera Multer en el Backend
+    formData.append('comprobante', file);
 
     const res = await fetch(`/api/pagos/upload/${idInscripcion}`, {
       method: 'POST',
       headers: {
-        // Importante: No incluir 'Content-Type': 'application/json' al enviar FormData
         ...(token && { Authorization: `Bearer ${token}` }),
       },
       body: formData,
@@ -199,5 +197,49 @@ export const API = {
       body: JSON.stringify({}) 
     });
     return await handleResponse(res);
+  },
+
+  // ===================== Reportes =====================
+  async generarCertificado(cursoId, estudianteId) {
+    const r = await fetch(`/api/reportes/certificado/${cursoId}/${estudianteId}`, { headers: getAuthHeaders() });
+    if (!r.ok) throw new Error('Error al generar certificado');
+    const blob = await r.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `certificado_${estudianteId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    return true;
+  },
+  async generarReportePDF(cursoId) {
+    const r = await fetch(`/api/reportes/curso/${cursoId}`, { headers: getAuthHeaders() });
+    if (!r.ok) throw new Error('Error al generar reporte');
+    const blob = await r.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reporte_curso_${cursoId}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    return true;
+  },
+  async generarReporteExcel(cursoId) {
+    const r = await fetch(`/api/reportes/curso/${cursoId}?formato=excel`, { headers: getAuthHeaders() });
+    if (!r.ok) throw new Error('Error al generar reporte');
+    const blob = await r.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reporte_curso_${cursoId}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+    return true;
   }
 };

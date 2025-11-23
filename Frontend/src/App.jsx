@@ -10,6 +10,7 @@ import UsuariosListPage from './modules/usuarios/UsuariosListPage';
 import UsuariosCreatePage from './modules/usuarios/UsuariosCreatePage';
 import UsuariosEditPage from './modules/usuarios/UsuariosEditPage';
 import LoginPage from './modules/auth/LoginPage';
+import ReportesListPage from './modules/reportes/ReportesListPage';
 import AppLayout from './layouts/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import './index.css';
@@ -23,8 +24,6 @@ import AprobacionPagosPage from './modules/pagos/AprobacionPagosPage';
 import MisCursosPage from './modules/misCursos/MisCursosPage';
 
 export default function App() {
-  // const auth = { rol: 'admin', cedula: '0101010101' }; // <-- ¡ELIMINADO! Ya no necesitamos esto.
-  
   return (
     <BrowserRouter>
       <Routes>
@@ -38,7 +37,6 @@ export default function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/pagos" element={<AprobacionPagosPage />} />
 
-            {/* Fíjate que ya no pasamos auth={...} */}
             <Route path="/cursos" element={<CursosListPage />} />
             <Route path="/cursos/nuevo" element={<CursosCreatePage />} />
             <Route path="/cursos/:id/editar" element={<CursosEditPage />} />
@@ -56,6 +54,8 @@ export default function App() {
             <Route path="/solicitudes/nueva" element={<FormSolicitud />} />
             <Route path="/solicitudes/:id/editar" element={<FormSolicitud />} />
             <Route path="/solicitudes/dashboard" element={<DashboardDevelop />} />
+            
+            <Route path="/reportes" element={<ReportesListPage />} />
           </Route>
         </Route>
       </Routes>

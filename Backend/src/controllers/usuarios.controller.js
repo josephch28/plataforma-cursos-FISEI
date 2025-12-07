@@ -172,6 +172,7 @@ exports.getUserCourses = async (req, res) => {
                 i.id_inscripcion,
                 c.id_curso,
                 c.nombre AS curso_nombre,
+                c.activo,
                 c.es_pagado,
                 c.costo,
                 i.estado,
@@ -193,15 +194,16 @@ exports.getUserCourses = async (req, res) => {
             SELECT
                 c.id_curso,
                 c.nombre AS curso_nombre,
+                c.activo,
                 'responsable' AS rol
             FROM curso c
-            WHERE c.cedula_responsable = ? AND c.activo = 1
+            WHERE c.cedula_responsable = ?
         `, [cedula]);
     // Query 3: Cursos donde el usuario es el docente principal 🆕
     const [docentePrincipalCourses] = await pool.query(`
-          SELECT c.id_curso, c.nombre AS curso_nombre, 'docente_principal' AS rol
+          SELECT c.id_curso, c.nombre AS curso_nombre, c.activo, 'docente_principal' AS rol
           FROM curso c
-          WHERE c.cedula_docente = ? AND c.activo = 1
+          WHERE c.cedula_docente = ?
       `, [cedula]);
 
     // Query 4: Cursos donde el usuario es un encargado/co-instructor
@@ -209,10 +211,11 @@ exports.getUserCourses = async (req, res) => {
             SELECT
                 c.id_curso,
                 c.nombre AS curso_nombre,
+                c.activo,
                 'encargado' AS rol
             FROM curso c
             JOIN curso_encargado ce ON c.id_curso = ce.id_curso
-            WHERE ce.cedula_encargado = ? AND c.activo = 1
+            WHERE ce.cedula_encargado = ?
         `, [cedula]);
 
     // Combinar todos los resultados y eliminar duplicados (priorizando el rol de estudiante)

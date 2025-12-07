@@ -30,8 +30,14 @@ exports.list = async (req, res) => {
     }
 
     if (estado) {
-      filters.push('estado = ?');
-      params.push(estado);
+      const states = estado.split(',').map(s => s.trim());
+      if (states.length > 1) {
+        filters.push(`estado IN (${states.map(() => '?').join(',')})`);
+        params.push(...states);
+      } else {
+        filters.push('estado = ?');
+        params.push(states[0]);
+      }
     }
 
     if (encargado) {

@@ -25,7 +25,17 @@ export default function SolicitudesListPage() {
   const [showFilters, setShowFilters] = useState(false);
 
   // Workflow Solicitudes
-  const [activeTab, setActiveTab] = useState('pendientes'); // Para Comité: 'pendientes' | 'realizadas'
+  const [activeTab, setActiveTab] = useState(
+    user?.rol === 'develop' ? 'mis_pendientes' : 'pendientes'
+  );
+
+  // Modal de Confirmación Genérico
+  const [confirmModal, setConfirmModal] = useState({
+    open: false,
+    title: '',
+    message: '',
+    onConfirm: null
+  });
 
   // Modal de Asignación
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
@@ -63,6 +73,18 @@ export default function SolicitudesListPage() {
       } else if (user?.rol === 'develop') {
         // Develop ve sus asignadas
         currentFilters.asignado_a = user.cedula;
+        if (activeTab === 'mis_pendientes') {
+          // Pendientes de realizar
+          currentFilters.estado = 'aprobado'; // Ojo: aprobado por comite = pendiente para dev
+        } else if (activeTab === 'historial') {
+          // Ya realizados
+          // No filtran por estado especifico, sino que NO sean 'aprobado' ni 'pendiente' (rejects?)
+          // Mejor listar solo 'realizado' y 'verificado'
+          currentFilters.estado = 'realizado,verificado';
+          // El backend soporta array? NO. soporta string exacto en controller linea 33 `filters.push('estado = ?')`.
+          // Necesitamos ajustar el backend para soportar lista de estados o llamar 2 veces.
+          // O modifico el backend para 'IN (?)'.
+        }
       }
 
       const cleanFilters = Object.fromEntries(
@@ -80,6 +102,18 @@ export default function SolicitudesListPage() {
   };
 
   // Acciones de Workflow
+  const handleConfirm = (title, message, action) => {
+    setConfirmModal({
+      open: true,
+      title,
+      message,
+      onConfirm: async () => {
+        await action();
+        setConfirmModal(prev => ({ ...prev, open: false }));
+      }
+    });
+  };
+
   const handleApproveClick = async (id) => {
     // Abrir modal, cargar developers
     try {
@@ -104,34 +138,42 @@ export default function SolicitudesListPage() {
     }
   };
 
-  const handleReject = async (id) => {
-    if (!confirm('¿Rechazar solicitud?')) return;
-    try {
-      await API.rejectSolicitud(id);
-      loadSolicitudes();
-    } catch (error) {
-      setToast({ message: 'Error al rechazar', type: 'error' });
-    }
+  const handleReject = (id) => {
+    handleConfirm('Rechazar Solicitud', '¿Estás seguro de rechazar esta solicitud?', async () => {
+      try {
+        await API.rejectSolicitud(id);
+        loadSolicitudes();
+        setToast({ message: 'Solicitud rechazada', type: 'success' });
+      } catch (error) {
+        setToast({ message: 'Error al rechazar', type: 'error' });
+      }
+    });
   };
 
-  const handleRealize = async (id) => {
-    if (!confirm('¿Marcar cambio como realizado?')) return;
-    try {
-      await API.realizeSolicitud(id);
-      loadSolicitudes();
-    } catch (error) {
-      setToast({ message: 'Error al actualizar estado', type: 'error' });
-    }
+  const handleRealize = (id) => {
+    handleConfirm('Marcar como Realizado', '¿Confirmas que has completado el desarrollo de este cambio?', async () => {
+      try {
+        await API.realizeSolicitud(id);
+        // Pequeño delay para asegurar consistencia DB
+        setTimeout(loadSolicitudes, 500);
+        setToast({ message: 'Cambio marcado como realizado', type: 'success' });
+      } catch (error) {
+        console.error(error);
+        setToast({ message: 'Error al actualizar estado', type: 'error' });
+      }
+    });
   };
 
-  const handleVerify = async (id) => {
-    if (!confirm('¿Verificar y cerrar cambio?')) return;
-    try {
-      await API.verifySolicitud(id, 'aceptar');
-      loadSolicitudes();
-    } catch (error) {
-      setToast({ message: 'Error al verificar', type: 'error' });
-    }
+  const handleVerify = (id) => {
+    handleConfirm('Verificar Cambio', '¿Verificar y cerrar este cambio definitivamente?', async () => {
+      try {
+        await API.verifySolicitud(id, 'aceptar');
+        loadSolicitudes();
+        setToast({ message: 'Solicitud verificada', type: 'success' });
+      } catch (error) {
+        setToast({ message: 'Error al verificar', type: 'error' });
+      }
+    });
   };
 
 
@@ -240,6 +282,23 @@ export default function SolicitudesListPage() {
             className={`py-2 px-4 font-medium whitespace-nowrap ${activeTab === 'todas' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
           >
             Auditoría (Todas)
+          </button>
+        </div>
+      )}
+
+      {user?.rol === 'develop' && (
+        <div className="flex space-x-4 border-b">
+          <button
+            onClick={() => setActiveTab('mis_pendientes')}
+            className={`py-2 px-4 font-medium ${activeTab === 'mis_pendientes' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            Mis Pendientes
+          </button>
+          <button
+            onClick={() => setActiveTab('historial')}
+            className={`py-2 px-4 font-medium ${activeTab === 'historial' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+          >
+            Historial Realizado
           </button>
         </div>
       )}
@@ -367,6 +426,30 @@ export default function SolicitudesListPage() {
             <div className="flex justify-end gap-2">
               <button onClick={() => setIsAssignModalOpen(false)} className="px-4 py-2 text-gray-600">Cancelar</button>
               <button onClick={confirmApprove} className="px-4 py-2 bg-blue-600 text-white rounded">Asignar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Confirmación General */}
+      {confirmModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-sm">
+            <h3 className="text-lg font-bold mb-2">{confirmModal.title}</h3>
+            <p className="text-gray-600 mb-6">{confirmModal.message}</p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setConfirmModal(prev => ({ ...prev, open: false }))}
+                className="px-4 py-2 rounded text-gray-600 hover:bg-gray-100"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmModal.onConfirm}
+                className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+              >
+                Confirmar
+              </button>
             </div>
           </div>
         </div>

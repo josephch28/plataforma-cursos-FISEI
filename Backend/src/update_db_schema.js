@@ -29,6 +29,11 @@ async function updateDB() {
             await connection.query("ALTER TABLE solicitudes_cambio ADD COLUMN entornos TEXT AFTER impacto");
         }
 
+        if (!columnNames.includes('fecha_termino')) {
+            console.log('Agregando columna fecha_termino...');
+            await connection.query("ALTER TABLE solicitudes_cambio ADD COLUMN fecha_termino DATETIME AFTER estado");
+        }
+
         // 2. Curso Columns
         const [cursoCols] = await connection.query("SHOW COLUMNS FROM curso");
         const cursoColNames = cursoCols.map(c => c.Field);

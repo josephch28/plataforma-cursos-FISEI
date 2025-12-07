@@ -97,6 +97,10 @@ export const API = {
     const res = await fetch(`/api/cursos/${id}/activar`, { method: 'PUT', headers: getAuthHeaders() });
     return await handleResponse(res);
   },
+  async finalizeCurso(id) {
+    const res = await fetch(`/api/cursos/${id}/finalizar`, { method: 'PUT', headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
 
 
   // ===================== Encargados del curso =====================

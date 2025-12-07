@@ -11,5 +11,7 @@ router.post('/', auth('admin'), validate(createCurso), ctrl.create);
 router.put('/:id', auth(), validate(createCurso), ctrl.update);
 router.delete('/:id', auth('admin'), ctrl.remove);
 router.put('/:id/activar', auth(), ctrl.activate);  // ✅ NUEVO
+router.put('/:id/finalizar', auth(), ctrl.finalize); // ✅ NUEVO FINALIZAR
+
 
 module.exports = router;

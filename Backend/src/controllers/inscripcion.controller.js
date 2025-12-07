@@ -50,7 +50,7 @@ exports.listByDocente = async (req, res) => {
          c.cedula_responsable = ? OR 
          ce.cedula_encargado IS NOT NULL`,
       // Pasamos la cédula para el CASE, y luego para las condiciones del WHERE
-      [cedula, cedula, cedula, cedula, cedula, cedula] 
+      [cedula, cedula, cedula, cedula, cedula, cedula]
     );
     res.json(rows);
   } catch (err) {
@@ -67,18 +67,39 @@ exports.create = async (req, res) => {
   if (!cedulaUsuario) {
     return res.status(401).json({ message: 'Sesión inválida' });
   }
-  
+
   try {
     // 1. Obtener curso y requisitos
     const [cursos] = await pool.query(
-      'SELECT id_curso, es_pagado, costo, publico_objetivo, prerequisito, cedula_responsable, cedula_docente FROM curso WHERE id_curso = ? AND activo = 1',
+      'SELECT id_curso, es_pagado, costo, publico_objetivo, prerequisito, cedula_responsable, cedula_docente, fecha_inicio_inscripcion, fecha_fin_inscripcion FROM curso WHERE id_curso = ? AND activo = 1',
       [id_curso]
     );
     if (!cursos.length) {
       return res.status(404).json({ message: 'Curso no encontrado o inactivo' });
     }
     const curso = cursos[0];
-    
+
+    // 1.1 VALIDACIÓN DE FECHAS DE INSCRIPCIÓN
+    const now = new Date();
+    // Resetear horas para comparar solo fechas si se desea, o mantener tiempo.
+    // Usaremos la hora actual vs el rango.
+
+    if (curso.fecha_inicio_inscripcion) {
+      const inicio = new Date(curso.fecha_inicio_inscripcion);
+      if (now < inicio) {
+        return res.status(403).json({ message: `Las inscripciones inician el ${inicio.toLocaleDateString()}` });
+      }
+    }
+
+    if (curso.fecha_fin_inscripcion) {
+      const fin = new Date(curso.fecha_fin_inscripcion);
+      // Ajustamos al final del día si solo es fecha, pero si es datetime se respeta.
+      // Asumimos que la comparación simple funciona.
+      if (now > fin) {
+        return res.status(403).json({ message: `Las inscripciones finalizaron el ${fin.toLocaleDateString()}` });
+      }
+    }
+
     // 2. Obtener perfil de usuario (membresía)
     const [usuarios] = await pool.query(
       'SELECT es_estudiante_uta, es_personal_uta, activo FROM usuario WHERE cedula = ? LIMIT 1',
@@ -95,7 +116,7 @@ exports.create = async (req, res) => {
         'SELECT estado FROM inscripcion WHERE cedula_usuario = ? AND id_curso = ?',
         [cedulaUsuario, curso.prerequisito]
       );
-        
+
       if (!prereqInscripcion.length || prereqInscripcion[0].estado !== 'aprobado') {
         return res.status(403).json({ message: `Rechazado: El prerrequisito (Curso ID ${curso.prerequisito}) no ha sido aprobado.` });
       }
@@ -121,14 +142,14 @@ exports.create = async (req, res) => {
       .map(s => s.trim())
       .filter(Boolean);
     let isAuthorized = (publicoObjetivo.length === 0 || publicoObjetivo.includes('Público General'));
-    
+
     if (publicoObjetivo.includes('Estudiantes UTA') && usuario.es_estudiante_uta === 1) isAuthorized = true;
     if (publicoObjetivo.includes('Personal UTA') && usuario.es_personal_uta === 1) isAuthorized = true;
 
     if (!isAuthorized) {
       return res.status(403).json({ message: 'El usuario no cumple con el público objetivo del curso.' });
     }
-    
+
     // 7. Verificar si ya está inscrito
     const [inscripcionExistente] = await pool.query(
       'SELECT id_inscripcion FROM inscripcion WHERE cedula_usuario = ? AND id_curso = ?',
@@ -140,7 +161,7 @@ exports.create = async (req, res) => {
 
     // 8. Determinar estado e inscripción
     const initialEstado = curso.es_pagado === 1 ? 'pendiente' : 'pagado';
-    
+
     const [result] = await pool.query(
       'INSERT INTO inscripcion (cedula_usuario, id_curso, estado) VALUES (?, ?, ?)',
       [cedulaUsuario, id_curso, initialEstado]
@@ -152,7 +173,7 @@ exports.create = async (req, res) => {
     let pagoInfo = null;
     if (curso.es_pagado === 1) {
       const monto = Number(curso.costo ?? 0);
-      const metodo = metodo_pago && ['transferencia','deposito'].includes(metodo_pago)
+      const metodo = metodo_pago && ['transferencia', 'deposito'].includes(metodo_pago)
         ? metodo_pago
         : 'transferencia';
       const numeroOrden = `ORD-${inscripcionId}-${Date.now()}`;
@@ -163,9 +184,9 @@ exports.create = async (req, res) => {
       );
       pagoInfo = { monto, metodo_pago: metodo, numero_orden: numeroOrden };
     }
-    
-    res.status(201).json({ 
-      message: 'Inscripción registrada', 
+
+    res.status(201).json({
+      message: 'Inscripción registrada',
       id_inscripcion: inscripcionId,
       estado: initialEstado,
       requires_payment: curso.es_pagado === 1,
@@ -181,7 +202,7 @@ exports.create = async (req, res) => {
 // Actualizar inscripción (docente/responsable/admin)
 exports.update = async (req, res) => {
   const { id } = req.params;
-  const b = req.validated || req.body; 
+  const b = req.validated || req.body;
   try {
     const cedula = req.user?.cedula;
     const rol = req.user?.rol;
@@ -196,7 +217,7 @@ exports.update = async (req, res) => {
 
     // La lógica de permisos de Docentes y Responsables solo aplica si NO es admin
     if (rol !== 'admin') {
-      
+
       // Verificación de permisos: Docente Principal, Responsable o Encargado.
       const [rows] = await pool.query(
         `SELECT 1
@@ -205,11 +226,11 @@ exports.update = async (req, res) => {
           WHERE i.id_inscripcion = ?
             AND (c.cedula_docente = ?              -- Es el docente principal
             OR c.cedula_responsable = ?            -- Es el responsable principal
-            OR EXISTS (SELECT 1 FROM curso_encargado ce WHERE ce.id_curso = i.id_curso AND ce.cedula_encargado = ?))`, 
+            OR EXISTS (SELECT 1 FROM curso_encargado ce WHERE ce.id_curso = i.id_curso AND ce.cedula_encargado = ?))`,
         // Se pasan los parámetros en el orden correcto para la consulta:
-        [id, cedula, cedula, cedula] 
+        [id, cedula, cedula, cedula]
       );
-      
+
       if (!rows.length) {
         return res.status(403).json({ message: 'No autorizado para calificar este curso' });
       }
@@ -223,11 +244,11 @@ exports.update = async (req, res) => {
     res.json({ message: 'Evaluación actualizada correctamente.' });
 
   } catch (err) {
-    console.error('Error FATAL al actualizar inscripción:', err); 
+    console.error('Error FATAL al actualizar inscripción:', err);
     // 🟢 FIX 2: Devolver un error más detallado en la respuesta.
-    res.status(500).json({ 
-        error: 'Error al actualizar inscripción', 
-        details: err.sqlMessage || err.message 
+    res.status(500).json({
+      error: 'Error al actualizar inscripción',
+      details: err.sqlMessage || err.message
     });
   }
 };
@@ -261,18 +282,18 @@ exports.getOne = async (req, res) => {
         'SELECT cedula_responsable, cedula_docente FROM curso WHERE id_curso = ?',
         [inscripcion.id_curso]
       );
-      
+
       const esResponsable = curso && curso.cedula_responsable === cedula;
-      
+
       // 🟢 NUEVA VERIFICACIÓN: Es el Docente Principal?
-      const esDocentePrincipal = curso && curso.cedula_docente === cedula; 
+      const esDocentePrincipal = curso && curso.cedula_docente === cedula;
 
       const [docenteRows] = await pool.query(
         'SELECT 1 FROM curso_encargado WHERE id_curso = ? AND cedula_encargado = ?',
         [inscripcion.id_curso, cedula]
       );
       // Renombrar para mayor claridad
-      const esDocenteEncargado = docenteRows.length > 0; 
+      const esDocenteEncargado = docenteRows.length > 0;
 
       // 🟢 AÑADIR esDocentePrincipal a la condición OR
       if (!esPropietario && !esResponsable && !esDocentePrincipal && !esDocenteEncargado) {

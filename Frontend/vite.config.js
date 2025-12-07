@@ -9,7 +9,9 @@ export default defineConfig({
     proxy: {
       '/api': { target: 'http://localhost:3000', changeOrigin: true },
       // Proxy de archivos subidos (para que /uploads/... vaya al backend en dev)
-      '/uploads': { target: 'http://localhost:3000', changeOrigin: true }
+      '/uploads': { target: 'http://localhost:3000', changeOrigin: true },
+      // Proxy para el formulario de cambios
+      '/formulario': { target: 'http://localhost:3000', changeOrigin: true }
     }
   }
 });

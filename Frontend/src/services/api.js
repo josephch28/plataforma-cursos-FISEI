@@ -97,7 +97,7 @@ export const API = {
     const res = await fetch(`/api/cursos/${id}/activar`, { method: 'PUT', headers: getAuthHeaders() });
     return await handleResponse(res);
   },
-  
+
 
   // ===================== Encargados del curso =====================
   async listEncargados(id) {
@@ -185,6 +185,42 @@ export const API = {
     const res = await fetch(`/api/solicitudes/stats`, { headers: getPublicHeaders() });
     return await handleResponse(res);
   },
+
+  // Workflow Actions
+  async listDevelopers() {
+    // Reutiliza listUsuarios filtrando por rol
+    return this.listUsuarios({ rol: 'develop' });
+  },
+  async approveSolicitud(id, developer_id) {
+    const res = await fetch(`/api/solicitudes/${id}/aprobar`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ developer_id })
+    });
+    return await handleResponse(res);
+  },
+  async rejectSolicitud(id) {
+    const res = await fetch(`/api/solicitudes/${id}/rechazar`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    return await handleResponse(res);
+  },
+  async realizeSolicitud(id) {
+    const res = await fetch(`/api/solicitudes/${id}/realizar`, {
+      method: 'POST',
+      headers: getAuthHeaders()
+    });
+    return await handleResponse(res);
+  },
+  async verifySolicitud(id, accion) {
+    const res = await fetch(`/api/solicitudes/${id}/verificar`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ accion })
+    });
+    return await handleResponse(res);
+  },
   // ===================== Pagos =====================
   async uploadComprobante(idInscripcion, file) {
     const token = localStorage.getItem('token');
@@ -210,13 +246,13 @@ export const API = {
     return await handleResponse(res);
   },
   async approvePayment(idPago) {
-    const res = await fetch(`/api/pagos/${idPago}/aprobar`, { 
-      method: 'PUT', 
+    const res = await fetch(`/api/pagos/${idPago}/aprobar`, {
+      method: 'PUT',
       headers: getAuthHeaders(),
-      body: JSON.stringify({}) 
+      body: JSON.stringify({})
     });
     return await handleResponse(res);
   }
-  
-  
+
+
 };

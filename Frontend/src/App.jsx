@@ -26,7 +26,7 @@ import MisCursosPage from './modules/misCursos/MisCursosPage';
 
 export default function App() {
   // const auth = { rol: 'admin', cedula: '0101010101' }; // <-- ¡ELIMINADO! Ya no necesitamos esto.
-  
+
   return (
     <BrowserRouter>
       <Routes>
@@ -72,8 +72,8 @@ export default function App() {
               <Route path="/mis-cursos" element={<MisCursosPage />} />
             </Route>
 
-            {/* Rutas solo para Develop */}
-            <Route element={<RoleProtectedRoute allowedRoles={['develop']} />}>
+            {/* Rutas para Develop y Comité */}
+            <Route element={<RoleProtectedRoute allowedRoles={['develop', 'comite']} />}>
               <Route path="/solicitudes" element={<SolicitudesListPage />} />
               <Route path="/solicitudes/nueva" element={<FormSolicitud />} />
               <Route path="/solicitudes/:id/editar" element={<FormSolicitud />} />

@@ -9,6 +9,10 @@ app.use(express.json());
 
 // Servir archivos subidos desde src/uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Servir Formulario de Cambios (se encuentra en ../../FormularioCambios relativa a src/app.js)
+app.use('/formulario', express.static(path.join(__dirname, '../../FormularioCambios')));
+
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/cursos', require('./routes/cursos.routes'));
 app.use('/api/cursos', require('./routes/encargados.routes'));

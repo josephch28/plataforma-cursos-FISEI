@@ -3,34 +3,32 @@
 const pool = require('../db');
 
 const sanitizeUser = (user) => {
-    if (user && user.password) {
-        delete user.password;
-    }
-    return user;
+  if (user && user.password) {
+    delete user.password;
+  }
+  return user;
 };
 
 exports.list = async (req, res) => {
   try {
-    const { inactivo } = req.query;
-    
-    // Determinar si buscamos usuarios INACTIVOS.
-    // req.query.inactivo será el string 'true' o 'false'.
-    const searchInactive = inactivo === 'true'; 
-    
-    // En MySQL, TRUE es 1 y FALSE es 0. 
-    // Si searchInactive es TRUE, queremos activo = 0 (usuarios inactivos).
-    // Si searchInactive es FALSE, queremos activo = 1 (usuarios activos).
-    const activeValue = searchInactive ? 0 : 1; 
+    const { inactivo, rol } = req.query; // <--- Extraemos rol
 
-    // Usamos un placeholder (?) para pasar el valor numérico, 
-    // garantizando que MySQL filtre correctamente.
-    const [rows] = await pool.query(
-      // [MODIFICADO] Agregar los nuevos campos
-      'SELECT cedula, nombre, apellido, email, rol, es_estudiante_uta, es_personal_uta, activo FROM usuario WHERE activo = ?',
-      [activeValue]
-    ); 
-    
-    res.json(rows.map(sanitizeUser)); 
+    // Filtro de activo/inactivo
+    const searchInactive = inactivo === 'true';
+    const activeValue = searchInactive ? 0 : 1;
+
+    let query = 'SELECT cedula, nombre, apellido, email, rol, es_estudiante_uta, es_personal_uta, activo FROM usuario WHERE activo = ?';
+    const params = [activeValue];
+
+    // Filtro de rol
+    if (rol) {
+      query += ' AND rol = ?';
+      params.push(rol);
+    }
+
+    const [rows] = await pool.query(query, params);
+
+    res.json(rows.map(sanitizeUser));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Error al obtener usuarios' });
@@ -68,11 +66,11 @@ exports.create = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
     // NOTA: El password DEBE ser hasheado con bcrypt en producción.
     await pool.query(
-    'INSERT INTO usuario (cedula, nombre, apellido, email, rol, es_estudiante_uta, es_personal_uta, password, activo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)',
-    // Usar !! para asegurar que los booleanos se guardan como 0 o 1 (TINYINT)
-    [cedula, nombre, apellido, email, rolNormalized, !!es_estudiante_uta, !!es_personal_uta, hashedPassword] 
-  );
-    
+      'INSERT INTO usuario (cedula, nombre, apellido, email, rol, es_estudiante_uta, es_personal_uta, password, activo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)',
+      // Usar !! para asegurar que los booleanos se guardan como 0 o 1 (TINYINT)
+      [cedula, nombre, apellido, email, rolNormalized, !!es_estudiante_uta, !!es_personal_uta, hashedPassword]
+    );
+
     const [row] = await pool.query('SELECT cedula, nombre, apellido, email, rol, es_estudiante_uta, es_personal_uta, activo FROM usuario WHERE cedula = ?', [cedula]);
     res.status(201).json(sanitizeUser(row[0]));
   } catch (error) {
@@ -89,25 +87,25 @@ exports.update = async (req, res) => {
     const { cedula } = req.params;
 
     if (b.email) {
-        const [emailCheck] = await pool.query(
-            // Busca si existe el email, EXCLUYENDO la cédula del usuario actual
-            'SELECT email FROM usuario WHERE email = ? AND cedula != ?', 
-            [b.email, cedula]
-        );
-        if (emailCheck.length) {
-            return res.status(409).json({ message: 'El email ya está registrado para otro usuario' });
-        }
+      const [emailCheck] = await pool.query(
+        // Busca si existe el email, EXCLUYENDO la cédula del usuario actual
+        'SELECT email FROM usuario WHERE email = ? AND cedula != ?',
+        [b.email, cedula]
+      );
+      if (emailCheck.length) {
+        return res.status(409).json({ message: 'El email ya está registrado para otro usuario' });
+      }
     }
-    
+
     // ¡NUEVO! Importar bcrypt aquí también
-    const bcrypt = require('bcrypt'); 
-    
+    const bcrypt = require('bcrypt');
+
     const fields = [];
     const params = [];
-    
+
     // Usamos for...of para poder usar 'await' dentro
     for (const k of Object.keys(b)) {
-      
+
       if (k === 'password') {
         // 1. ¡LÓGICA CORREGIDA! Si la clave es 'password', la hasheamos
         fields.push('password = ?');
@@ -129,10 +127,10 @@ exports.update = async (req, res) => {
         params.push(b[k]);
       }
     }
-        
+
     params.push(cedula); // Añadir la cédula al final para el WHERE
     await pool.query(`UPDATE usuario SET ${fields.join(', ')} WHERE cedula = ?`, params);
-    
+
     const [row] = await pool.query('SELECT cedula, nombre, apellido, email, rol, es_estudiante_uta, es_personal_uta, activo FROM usuario WHERE cedula = ?', [cedula]);
     res.json(sanitizeUser(row[0]));
   } catch (error) {
@@ -164,12 +162,12 @@ exports.activate = async (req, res) => {
 };
 
 exports.getUserCourses = async (req, res) => {
-    // La cédula se obtiene del token JWT, gracias al middleware 'auth'
-    const cedula = req.user.cedula; 
+  // La cédula se obtiene del token JWT, gracias al middleware 'auth'
+  const cedula = req.user.cedula;
 
-    try {
-        // Query 1: Cursos donde el usuario está inscrito (Estudiante)
-        const [enrolledCourses] = await pool.query(`
+  try {
+    // Query 1: Cursos donde el usuario está inscrito (Estudiante)
+    const [enrolledCourses] = await pool.query(`
             SELECT 
                 i.id_inscripcion,
                 c.id_curso,
@@ -190,8 +188,8 @@ exports.getUserCourses = async (req, res) => {
             WHERE i.cedula_usuario = ?
         `, [cedula]);
 
-        // Query 2: Cursos donde el usuario es el responsable principal
-        const [responsibleCourses] = await pool.query(`
+    // Query 2: Cursos donde el usuario es el responsable principal
+    const [responsibleCourses] = await pool.query(`
             SELECT
                 c.id_curso,
                 c.nombre AS curso_nombre,
@@ -199,15 +197,15 @@ exports.getUserCourses = async (req, res) => {
             FROM curso c
             WHERE c.cedula_responsable = ? AND c.activo = 1
         `, [cedula]);
-        // Query 3: Cursos donde el usuario es el docente principal 🆕
-        const [docentePrincipalCourses] = await pool.query(`
+    // Query 3: Cursos donde el usuario es el docente principal 🆕
+    const [docentePrincipalCourses] = await pool.query(`
           SELECT c.id_curso, c.nombre AS curso_nombre, 'docente_principal' AS rol
           FROM curso c
           WHERE c.cedula_docente = ? AND c.activo = 1
       `, [cedula]);
 
-        // Query 4: Cursos donde el usuario es un encargado/co-instructor
-        const [encargadoCourses] = await pool.query(`
+    // Query 4: Cursos donde el usuario es un encargado/co-instructor
+    const [encargadoCourses] = await pool.query(`
             SELECT
                 c.id_curso,
                 c.nombre AS curso_nombre,
@@ -217,21 +215,21 @@ exports.getUserCourses = async (req, res) => {
             WHERE ce.cedula_encargado = ? AND c.activo = 1
         `, [cedula]);
 
-        // Combinar todos los resultados y eliminar duplicados (priorizando el rol de estudiante)
-        const combinedCourses = [...enrolledCourses, ...responsibleCourses, ...docentePrincipalCourses, ...encargadoCourses];        
-        const courseMap = new Map();
-        combinedCourses.forEach(course => {
-            const key = course.id_curso;
-            // Si el curso ya existe, solo lo reemplaza si el nuevo rol es 'estudiante'
-            if (course.rol === 'estudiante' || !courseMap.has(key)) {
-                courseMap.set(key, course);
-            }
-        });
+    // Combinar todos los resultados y eliminar duplicados (priorizando el rol de estudiante)
+    const combinedCourses = [...enrolledCourses, ...responsibleCourses, ...docentePrincipalCourses, ...encargadoCourses];
+    const courseMap = new Map();
+    combinedCourses.forEach(course => {
+      const key = course.id_curso;
+      // Si el curso ya existe, solo lo reemplaza si el nuevo rol es 'estudiante'
+      if (course.rol === 'estudiante' || !courseMap.has(key)) {
+        courseMap.set(key, course);
+      }
+    });
 
-        res.json(Array.from(courseMap.values()));
+    res.json(Array.from(courseMap.values()));
 
-    } catch (error) {
-        console.error('Error fetching user courses:', error);
-        res.status(500).json({ error: 'Error al obtener los cursos del usuario' });
-    }
+  } catch (error) {
+    console.error('Error fetching user courses:', error);
+    res.status(500).json({ error: 'Error al obtener los cursos del usuario' });
+  }
 };

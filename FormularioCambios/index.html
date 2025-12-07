@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Solicitud de Cambio - Change Management</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: 'Segoe UI', 'Arial', Helvetica, sans-serif;
+      background: #f4f8fc;
+      color: #253b58;
+      margin: 0;
+      padding: 0;
+    }
+
+    main {
+      max-width: 790px;
+      margin: 48px auto;
+      background: #fff;
+      border-radius: 18px;
+      box-shadow: 0 10px 32px #b2bfd82a, 0 2px 12px #1553ad19;
+      padding: 48px 42px 38px 42px;
+      position: relative;
+    }
+
+    h1 {
+      font-size: 2.3em;
+      color: #20529f;
+      margin-bottom: 32px;
+      font-weight: 700;
+      letter-spacing: .8px;
+      text-align: center;
+    }
+
+    .selector {
+      text-align: center;
+      margin-bottom: 37px;
+    }
+
+    .selector button {
+      margin: 0 9px 0 9px;
+      padding: 0.82em 2.7em;
+      border-radius: 9px;
+      border: 0;
+      background: #e4e8f3;
+      color: #2259c1;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 1.1em;
+      transition: background .3s;
+      box-shadow: 0 2px 8px #f3f8fc88;
+    }
+
+    .selector button.sel-active {
+      background: linear-gradient(92deg, #2274e1 70%, #62b1fd 100%);
+      color: #fff;
+      box-shadow: 0 3px 14px #2274e12a;
+    }
+
+    .selector button:hover:not(.sel-active) {
+      background: #d7e4fc;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    fieldset {
+      border: none;
+      border-top: 2px solid #e8ecf7;
+      border-radius: 10px;
+      margin-bottom: 36px;
+      padding: 24px 0 0 0;
+      background: #f7faff;
+      box-shadow: 0 1.5px 5px #b6bbce1a;
+    }
+
+    legend {
+      font-size: 1.18em;
+      font-weight: bold;
+      color: #20529f;
+      margin-bottom: 18px;
+      padding: 0 10px;
+      letter-spacing: .6px;
+    }
+
+    label {
+      display: block;
+      margin: 22px 0 11px 0;
+      font-size: 1.03em;
+      font-weight: 500;
+      color: #315490;
+    }
+
+    input[type="text"],
+    input[type="date"],
+    input[type="email"],
+    textarea,
+    select {
+      width: 99%;
+      padding: 12px;
+      background: #f4f7fc;
+      border: 1.6px solid #bbc8e2;
+      border-radius: 7px;
+      font-size: 1em;
+      color: #253b58;
+      letter-spacing: .2px;
+      outline: none;
+      transition: border 0.2s, background 0.18s;
+      margin-top: 6px;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border: 2px solid #2274e1;
+      background: #eef5ff;
+    }
+
+    button[type="submit"] {
+      padding: 0.9em 2.7em;
+      border: none;
+      background: linear-gradient(92deg, #2274e1 70%, #3ca1ee 100%);
+      color: #fff;
+      font-size: 1.1em;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      box-shadow: 0 4px 18px #2274e12a;
+      margin-top: 18px;
+      margin-bottom: 8px;
+      transition: background .3s, box-shadow .18s;
+    }
+
+    button[type="submit"]:hover,
+    button[type="submit"]:focus {
+      background: linear-gradient(92deg, #174ea6 85%, #2274e1 100%);
+      box-shadow: 0 7px 24px #20529f2a;
+    }
+
+    .form-footer {
+      margin-top: 2em;
+      color: #7b92b6;
+      text-align: center;
+      font-size: 1.03em;
+      letter-spacing: .23px;
+    }
+
+    #canvas-panel {
+      background: #eef2fa;
+      border-radius: 12px;
+      margin: 38px 0 0 0;
+      padding: 24px 30px;
+      box-shadow: 0 2px 14px #bfd2e21a;
+      font-size: 1.07em;
+      min-height: 70px;
+    }
+
+    #canvas-panel h2 {
+      font-size: 1.3em;
+      font-weight: 600;
+      color: #20529f;
+    }
+
+    #canvas-panel ul {
+      list-style: none;
+      padding: 0;
+      margin: 24px 0 0 0;
+    }
+
+    #canvas-panel li {
+      margin-bottom: 14px;
+      padding: 9px 0;
+      border-bottom: 1px solid #d4ddee;
+    }
+
+    #canvas-panel strong {
+      color: #2274e1;
+    }
+
+    #details-view {
+      background: #f8fbff;
+      border: 1px solid #cddbfa;
+      border-radius: 8px;
+      padding: 18px;
+      margin-top: 28px;
+      color: #203056;
+    }
+
+    .close-details {
+      float: right;
+      margin: -12px -14px 0 0;
+      background: #e2eedb;
+      color: #2458b3;
+      border-radius: 7px;
+      padding: 4px 18px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+    }
+
+    @media (max-width: 950px) {
+      main {
+        padding: 20px 7vw;
+      }
+    }
+
+    @media (max-width: 620px) {
+      main {
+        padding: 7vw 2vw;
+      }
+
+      h1 {
+        font-size: 1.15em;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <h1>Solicitud de Cambio</h1>
+    <div class="selector">
+      <button type="button" id="usuarioBtn" class="sel-active">Usuario Final</button>
+      <button type="button" id="expertoBtn">Experto Técnico</button>
+    </div>
+
+    <!-- Formulario para Usuario Final -->
+    <form id="form-usuario">
+      <fieldset>
+        <legend>Formulario para Usuario Final</legend>
+        <label>Nombre
+          <input type="text" name="nombre_solicitante" required placeholder="Tu nombre">
+        </label>
+        <label>Apellido
+          <input type="text" name="apellido_solicitante" required placeholder="Tu apellido">
+        </label>
+        <label>Descripción del cambio solicitado
+          <textarea name="descripcion" required maxlength="500"
+            placeholder="Describe brevemente el cambio que necesitas"></textarea>
+        </label>
+        <label>Razón o justificación
+          <textarea name="razon" required maxlength="300"
+            placeholder="Explica por qué necesitas este cambio"></textarea>
+        </label>
+        <label>Fecha deseada para el cambio
+          <input type="date" name="fecha_deseada">
+        </label>
+        <label>Email de contacto
+          <input type="email" name="contacto" required placeholder="tu@email.com">
+        </label>
+      </fieldset>
+      <button type="submit">Enviar Solicitud</button>
+    </form>
+
+    <!-- Formulario para Experto Técnico -->
+    <form id="form-experto" class="hidden">
+      <fieldset>
+        <legend>Formulario para Experto Técnico</legend>
+        <label>Nombre
+          <input type="text" name="nombre_solicitante" required placeholder="Tu nombre">
+        </label>
+        <label>Apellido
+          <input type="text" name="apellido_solicitante" required placeholder="Tu apellido">
+        </label>
+        <label>Descripción técnica del cambio
+          <textarea name="descripcion" required maxlength="600"
+            placeholder="Describe el cambio e impacto técnico"></textarea>
+        </label>
+        <label>Justificación del cambio
+          <textarea name="razon" required maxlength="300"
+            placeholder="Explica por qué es necesario el cambio"></textarea>
+        </label>
+        <label>Tipo de cambio
+          <select name="tipo_cambio" required>
+            <option value="">Selecciona tipo</option>
+            <option>Estándar</option>
+            <option>Normal</option>
+            <option>Emergencia</option>
+          </select>
+        </label>
+        <label>Categoría
+          <select name="categoria" required>
+            <option value="">Selecciona categoría</option>
+            <option>Aplicación</option>
+            <option>Base de Datos (BD)</option>
+            <option>Red</option>
+            <option>Seguridad</option>
+            <option>Sistema Operativo (SO)</option>
+            <option>Schedule Outage / Parada</option>
+            <option>Otro</option>
+          </select>
+        </label>
+        <label>Prioridad
+          <select name="prioridad" required>
+            <option value="">Selecciona prioridad</option>
+            <option>Urgente</option>
+            <option>Alta</option>
+            <option>Media</option>
+            <option>Baja</option>
+          </select>
+        </label>
+        <label>Impacto estimado
+          <select name="impacto" required>
+            <option value="">Selecciona impacto</option>
+            <option>Menor</option>
+            <option>Medio</option>
+            <option>Mayor</option>
+          </select>
+        </label>
+        <label>Entornos impactados
+          <textarea name="entornos" maxlength="200"
+            placeholder="Describa entornos afectados (ej: prod, test, QA)"></textarea>
+        </label>
+        <label>Fecha requerida
+          <input type="date" name="fecha_deseada">
+        </label>
+        <label>Email de contacto
+          <input type="email" name="contacto" required placeholder="tu@email.com">
+        </label>
+        <label>Adjuntar documentación (opcional)
+          <input type="file" name="documentacion">
+        </label>
+      </fieldset>
+      <button type="submit">Enviar Solicitud Detallada</button>
+    </form>
+
+    <div class="form-footer">
+      <button id="verCanvas"
+        style="background:#e1e8ed;color:#20529f;font-size:1em;padding:0.5em 2em;border-radius:8px;border:none;box-shadow:0 3px 12px #20529f15;margin-top:18px;margin-bottom:9px;cursor:pointer;">Ver
+        Solicitudes Guardadas</button>
+      <p>La información sobre recursos, plan de prueba y aprobaciones será gestionada posteriormente por el comité de
+        cambios.</p>
+    </div>
+    <div id="canvas-panel" class="hidden"></div>
+    <div id="details-view" class="hidden"></div>
+  </main>
+  <script>
+    let modo = "usuario";
+    const usuarioBtn = document.getElementById('usuarioBtn');
+    const expertoBtn = document.getElementById('expertoBtn');
+    const formUsuario = document.getElementById('form-usuario');
+    const formExperto = document.getElementById('form-experto');
+    const canvasPanel = document.getElementById('canvas-panel');
+    const verCanvasBtn = document.getElementById('verCanvas');
+    const detailsView = document.getElementById('details-view');
+    let solicitudes = [];
+
+    function switchForm(tipo) {
+      modo = tipo;
+      if (tipo === 'usuario') {
+        usuarioBtn.classList.add('sel-active');
+        expertoBtn.classList.remove('sel-active');
+        formUsuario.classList.remove('hidden');
+        formExperto.classList.add('hidden');
+      } else {
+        usuarioBtn.classList.remove('sel-active');
+        expertoBtn.classList.add('sel-active');
+        formUsuario.classList.add('hidden');
+        formExperto.classList.remove('hidden');
+      }
+      detailsView.classList.add('hidden');
+    }
+    usuarioBtn.onclick = () => switchForm('usuario');
+    expertoBtn.onclick = () => switchForm('experto');
+    switchForm('usuario');
+
+    formUsuario.onsubmit = async function (e) {
+      e.preventDefault();
+      const fd = new FormData(formUsuario);
+      const data = {
+        tipo_formulario: "usuario",
+        nombre_solicitante: fd.get('nombre_solicitante'),
+        apellido_solicitante: fd.get('apellido_solicitante'),
+        descripcion: fd.get('descripcion'),
+        razon: fd.get('razon'),
+        fecha_deseada: fd.get('fecha_deseada'),
+        contacto: fd.get('contacto'),
+        prioridad: 'baja', // Default por defecto si no existe en form usuario
+        fecha_solicitud: new Date().toISOString().split('T')[0]
+      };
+
+      try {
+        const res = await fetch('http://localhost:3000/api/solicitudes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error('Error al guardar');
+        const saved = await res.json();
+        alert("Solicitud guardada en Base de Datos y GitHub.");
+        formUsuario.reset();
+        // Recargar o limpiar
+      } catch (err) {
+        console.error(err);
+        alert("Error al guardar solicitud: " + err.message);
+      }
+    }
+    formExperto.onsubmit = async function (e) {
+      e.preventDefault();
+      const fd = new FormData(formExperto);
+      const data = {
+        tipo_formulario: "experto",
+        nombre_solicitante: fd.get('nombre_solicitante'),
+        apellido_solicitante: fd.get('apellido_solicitante'),
+        descripcion: fd.get('descripcion'),
+        razon: fd.get('razon'),
+        tipo_cambio: fd.get('tipo_cambio'),
+        categoria: fd.get('categoria'),
+        prioridad: fd.get('prioridad'),
+        impacto: fd.get('impacto'),
+        entornos: fd.get('entornos'),
+        fecha_deseada: fd.get('fecha_deseada'),
+        contacto: fd.get('contacto'),
+        fecha_solicitud: new Date().toISOString().split('T')[0]
+      };
+
+      try {
+        const res = await fetch('http://localhost:3000/api/solicitudes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error('Error al guardar');
+        const saved = await res.json();
+        alert("Solicitud DETALLADA guardada en Base de Datos y GitHub.");
+        formExperto.reset();
+      } catch (err) {
+        console.error(err);
+        alert("Error al guardar solicitud: " + err.message);
+      }
+    }
+
+    verCanvasBtn.onclick = function () {
+      mostrarCanvas();
+    };
+
+    function mostrarCanvas() {
+      canvasPanel.innerHTML = '<h2>Solicitudes guardadas en memoria</h2>';
+      if (!solicitudes.length) {
+        canvasPanel.innerHTML += "<p>No hay solicitudes guardadas.</p>";
+        canvasPanel.classList.remove('hidden');
+        detailsView.classList.add('hidden');
+        return;
+      }
+      canvasPanel.innerHTML += "<ul>" +
+        solicitudes.map((sol, idx) => `<li>
+      <strong>#${idx + 1}</strong> 
+      <span>&mdash; ${sol.tipo_formulario === 'usuario' ? "Usuario Final" : "Experto Técnico"}</span>
+      <br>
+      <strong>Descripción:</strong> ${(sol.descripcion || '').substring(0, 50)}
+      <br>
+      <strong>Contacto:</strong> ${sol.contacto || '-'}
+      <br>
+      <strong>Fecha:</strong> ${sol.fecha_guardado}
+      <br>
+      <button onclick="mostrarDetalle(${idx})" style="margin-top:6px;padding:5px 14px;border-radius:6px;border:none;background:#20529f;color:#fff;font-weight:500;cursor:pointer;">Ver Detalles</button>
+    </li>`).join('') +
+        "</ul>";
+      canvasPanel.classList.remove('hidden');
+      detailsView.classList.add('hidden');
+    }
+
+    window.mostrarDetalle = function (idx) {
+      const sol = solicitudes[idx];
+      let html = `<button class="close-details" onclick="cerrarDetalle()">Cerrar</button>
+    <h3>Detalle de la Solicitud #${idx + 1}</h3>`;
+      Object.entries(sol).forEach(([k, v]) => {
+        html += `<p><strong>${k.replace(/_/g, ' ').replace('tipo formulario', 'Tipo de formulario').replace('descripcion', 'Descripción').replace('razon', 'Razón/Justificación').replace('fecha guardado', 'Fecha guardado').replace('fecha deseada', 'Fecha deseada').replace('contacto', 'Contacto').replace('tipo cambio', 'Tipo de cambio').replace('categoria', 'Categoría').replace('prioridad', 'Prioridad').replace('impacto', 'Impacto').replace('entornos', 'Entornos impactados')}: </strong> ${v === null || v === "" ? "-" : v}</p>`;
+      });
+      detailsView.innerHTML = html;
+      detailsView.classList.remove('hidden');
+      detailsView.scrollIntoView({ behavior: "smooth" });
+    }
+
+    window.cerrarDetalle = function () {
+      detailsView.classList.add('hidden');
+    };
+  </script>
+</body>
+
+</html>

@@ -9,22 +9,22 @@ import { FaChalkboardTeacher, FaUserGraduate } from 'react-icons/fa';
 
 // Función auxiliar para obtener la información de estado
 const getStatusInfo = (estado, es_pagado) => {
-  if (estado === 'aprobado') {
-    return { text: 'Aprobado', color: 'text-green-700', icon: HiOutlineCheckCircle };
-  }
-  if (estado === 'pagado') {
-    return { text: 'Pagado/Inscrito', color: 'text-green-600', icon: HiOutlineCheckCircle };
-  }
-  if (estado === 'pendiente' && es_pagado === 1) {
-    return { text: 'Pago Pendiente', color: 'text-yellow-600', icon: HiOutlineClock };
-  }
-  if (estado === 'pendiente') {
-    return { text: 'Revisión (Inscripción)', color: 'text-yellow-600', icon: HiOutlineClock };
-  }
-  if (estado === 'rechazado') {
-    return { text: 'Rechazado', color: 'text-red-600', icon: HiOutlineXCircle };
-  }
-  return { text: 'Desconocido', color: 'text-gray-500', icon: HiOutlineClock };
+    if (estado === 'aprobado') {
+        return { text: 'Aprobado', color: 'text-green-700', icon: HiOutlineCheckCircle };
+    }
+    if (estado === 'pagado') {
+        return { text: 'Pagado/Inscrito', color: 'text-green-600', icon: HiOutlineCheckCircle };
+    }
+    if (estado === 'pendiente' && es_pagado === 1) {
+        return { text: 'Pago Pendiente', color: 'text-yellow-600', icon: HiOutlineClock };
+    }
+    if (estado === 'pendiente') {
+        return { text: 'Revisión (Inscripción)', color: 'text-yellow-600', icon: HiOutlineClock };
+    }
+    if (estado === 'rechazado') {
+        return { text: 'Rechazado', color: 'text-red-600', icon: HiOutlineXCircle };
+    }
+    return { text: 'Desconocido', color: 'text-gray-500', icon: HiOutlineClock };
 };
 
 export default function MisCursosPage() {
@@ -69,7 +69,7 @@ export default function MisCursosPage() {
         // Lógica de visualización para cursos de estudiante
         if (course.rol === 'estudiante') {
             const { text, color, icon: StatusIcon } = getStatusInfo(course.estado, course.es_pagado);
-            
+
             // Requisitos para mostrar el botón "Subir Pago":
             // 1. Es de pago (es_pagado = 1)
             // 2. El estado de la inscripción es 'pendiente'
@@ -80,7 +80,7 @@ export default function MisCursosPage() {
 
             return (
                 <div key={course.id_inscripcion} className="p-4 border rounded-lg shadow-sm bg-white flex flex-col sm:flex-row justify-between items-start sm:items-center">
-                    
+
                     <div className="flex-1 min-w-0 mb-3 sm:mb-0">
                         <h3 className="text-xl font-semibold text-gray-800">{course.curso_nombre}</h3>
                         <p className="text-sm text-gray-500 flex items-center">
@@ -88,7 +88,7 @@ export default function MisCursosPage() {
                             Rol: Estudiante - Inscripción **#{course.id_inscripcion}**
                         </p>
                     </div>
-                    
+
                     <div className="flex flex-col sm:items-end space-y-2">
                         <div className="flex flex-col items-start sm:items-end text-sm text-gray-600">
                             {course.es_pagado === 1 && (
@@ -102,13 +102,12 @@ export default function MisCursosPage() {
                                 {text}
                             </span>
                         </div>
-                        
+
                         {isPagado && (
-                            <Link 
+                            <Link
                                 to={`/pago/${course.id_inscripcion}/subir`}
-                                className={`px-4 py-2 text-sm rounded-lg font-medium transition flex items-center whitespace-nowrap ${
-                                  requiresUpload ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                }`}
+                                className={`px-4 py-2 text-sm rounded-lg font-medium transition flex items-center whitespace-nowrap ${requiresUpload ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    }`}
                             >
                                 <HiOutlineUpload className="w-5 h-5 mr-1" />
                                 {requiresUpload ? 'Ver orden / Subir pago' : 'Ver orden de pago'}
@@ -127,11 +126,11 @@ export default function MisCursosPage() {
                     <p className="text-sm text-indigo-700 flex items-center">
                         <FaChalkboardTeacher className="inline mr-1 w-4 h-4" />
                         Rol: <span className="font-medium capitalize">
-                            {course.rol === 'responsable' 
-                              ? 'Responsable Principal' 
-                              : course.rol === 'docente_principal' // 🟢 Asegurarse que esta condición exista
-                              ? 'Docente Principal'
-                              : 'Encargado'}
+                            {course.rol === 'responsable'
+                                ? 'Responsable Principal'
+                                : course.rol === 'docente_principal' // 🟢 Asegurarse que esta condición exista
+                                    ? 'Docente Principal'
+                                    : 'Encargado'}
                         </span>
                     </p>
                 </div>
@@ -148,7 +147,7 @@ export default function MisCursosPage() {
             {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">{error}</div>
             )}
-            
+
             {/* Cursos del Usuario como Estudiante */}
             <section className="space-y-4">
                 <h2 className="text-2xl font-bold text-gray-700">Cursos Inscritos ({studentCourses.length})</h2>
@@ -162,7 +161,7 @@ export default function MisCursosPage() {
                     </div>
                 )}
             </section>
-            
+
             <hr className="border-gray-200" />
 
             {/* Cursos del Usuario como Profesor/Responsable */}

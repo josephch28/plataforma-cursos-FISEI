@@ -17,7 +17,7 @@ export default function FormUsuario({ initial = {}, onSaved }) { // <-- SIN auth
     rol: initial.rol || 'usuario',
     password: '',
     es_estudiante_uta: !!initial.es_estudiante_uta,
-    es_personal_uta: !!initial.es_personal_uta, 
+    es_personal_uta: !!initial.es_personal_uta,
   });
   const [errors, setErrors] = useState({});
   const [busy, setBusy] = useState(false);
@@ -59,7 +59,7 @@ export default function FormUsuario({ initial = {}, onSaved }) { // <-- SIN auth
       if (!isUpdate || data.password) {
         payload.password = data.password;
       }
-      
+
       if (isUpdate) {
         await API.updateUsuario(initial.cedula, payload); // <-- SIN auth
         setMensaje({ tipo: 'exito', texto: 'Usuario actualizado correctamente.' });
@@ -70,7 +70,7 @@ export default function FormUsuario({ initial = {}, onSaved }) { // <-- SIN auth
         // Limpiar campos para nueva entrada
         setData({ cedula: '', nombre: '', apellido: '', email: '', rol: 'usuario', password: '' });
       }
-      
+
       setTimeout(() => {
         setMensaje(null);
         if (onSaved) onSaved();
@@ -110,6 +110,8 @@ export default function FormUsuario({ initial = {}, onSaved }) { // <-- SIN auth
             <option value="usuario">Usuario</option>
             <option value="responsable">Responsable</option>
             <option value="admin">Admin</option>
+            <option value="develop">Developer</option>
+            <option value="comite">Comité de Cambios</option>
           </select>
           {errors.rol && <p className="text-red-600 text-sm mt-1">{errors.rol}</p>}
         </div>

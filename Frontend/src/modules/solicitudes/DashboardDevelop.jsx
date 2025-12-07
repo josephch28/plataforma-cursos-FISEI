@@ -117,7 +117,7 @@ export default function DashboardDevelop() {
                 baja: 'bg-green-500'
               };
               const color = colorMap[item.prioridad?.toLowerCase()] || 'bg-gray-600';
-              
+
               return (
                 <div key={item.prioridad} className="flex items-center justify-between">
                   <span className="text-gray-700 capitalize">{item.prioridad}</span>
@@ -145,15 +145,15 @@ export default function DashboardDevelop() {
             to="/solicitudes"
             className="p-4 border-2 border-blue-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition"
           >
-            <h3 className="font-bold text-blue-700">Ver Todas las Solicitudes</h3>
-            <p className="text-gray-600 text-sm mt-1">Consulta y filtra todas las solicitudes de cambio</p>
+            <h3 className="font-bold text-blue-700">Gestión Completa</h3>
+            <p className="text-gray-600 text-sm mt-1">Ver panel de aprobación y asignación.</p>
           </Link>
           <Link
             to="/solicitudes?estado=pendiente"
             className="p-4 border-2 border-yellow-200 rounded-lg hover:border-yellow-500 hover:bg-yellow-50 transition"
           >
-            <h3 className="font-bold text-yellow-700">Solicitudes Pendientes</h3>
-            <p className="text-gray-600 text-sm mt-1">Ver solo las solicitudes que están pendientes</p>
+            <h3 className="font-bold text-yellow-700">Pendientes de Aprobación</h3>
+            <p className="text-gray-600 text-sm mt-1">Revisar solicitudes nuevas para asignar.</p>
           </Link>
         </div>
       </div>

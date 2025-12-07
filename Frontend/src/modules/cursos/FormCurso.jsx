@@ -34,7 +34,9 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
     nota_aprobacion: initial.nota_aprobacion ?? 7,
     requiere_asistencia: initial.requiere_asistencia ?? true,
     fecha_inicio: toDateInputValue(initial.fecha_inicio),
-    fecha_fin: toDateInputValue(initial.fecha_fin)
+    fecha_fin: toDateInputValue(initial.fecha_fin),
+    fecha_inicio_inscripcion: toDateInputValue(initial.fecha_inicio_inscripcion),
+    fecha_fin_inscripcion: toDateInputValue(initial.fecha_fin_inscripcion)
   });
 
   // Estado dual: nombre en UI, id para backend
@@ -110,6 +112,7 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
     if (data.horas !== '' && (!Number.isInteger(Number(data.horas)) || Number(data.horas) <= 0)) e.horas = 'Horas entero positivo';
     if (data.nota_aprobacion < 0 || data.nota_aprobacion > 10) e.nota_aprobacion = 'Nota entre 0 y 10';
     if (data.fecha_inicio && data.fecha_fin && new Date(data.fecha_inicio) > new Date(data.fecha_fin)) e.fecha_fin = 'Fin debe ser mayor o igual a inicio';
+    if (data.fecha_inicio_inscripcion && data.fecha_fin_inscripcion && new Date(data.fecha_inicio_inscripcion) > new Date(data.fecha_fin_inscripcion)) e.fecha_fin_inscripcion = 'Fin insc. debe ser mayor o igual a inicio';
     if (data.es_pagado && (data.costo === '' || Number(data.costo) < 0)) e.costo = 'Costo válido requerido';
     return e;
   };
@@ -135,6 +138,8 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
         es_pagado: Boolean(data.es_pagado),
         fecha_inicio: toDateInputValue(data.fecha_inicio),
         fecha_fin: toDateInputValue(data.fecha_fin),
+        fecha_inicio_inscripcion: toDateInputValue(data.fecha_inicio_inscripcion),
+        fecha_fin_inscripcion: toDateInputValue(data.fecha_fin_inscripcion),
         prerequisito: prereqId ?? null,
         publico_objetivo: Array.isArray(data.publico_objetivo)
           ? data.publico_objetivo
@@ -352,6 +357,29 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
             onChange={(e) => setData({ ...data, fecha_fin: e.target.value })}
           />
           {errors.fecha_fin && <p className="text-xs text-red-600 mt-1">{errors.fecha_fin}</p>}
+        </div>
+      </div>
+
+      {/* Fechas de Inscripción */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className={labelClass}>Fecha Inicio Inscripción</label>
+          <input
+            type="date"
+            className={inputClass}
+            value={data.fecha_inicio_inscripcion}
+            onChange={(e) => setData({ ...data, fecha_inicio_inscripcion: e.target.value })}
+          />
+        </div>
+        <div>
+          <label className={labelClass}>Fecha Fin Inscripción</label>
+          <input
+            type="date"
+            className={inputClass}
+            value={data.fecha_fin_inscripcion}
+            onChange={(e) => setData({ ...data, fecha_fin_inscripcion: e.target.value })}
+          />
+          {errors.fecha_fin_inscripcion && <p className="text-xs text-red-600 mt-1">{errors.fecha_fin_inscripcion}</p>}
         </div>
       </div>
 

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { API } from '../../services/api';
+import Toast from '../../components/Toast';
 
 export default function FormSolicitud() {
   const navigate = useNavigate();
@@ -14,10 +15,7 @@ export default function FormSolicitud() {
     apellido_solicitante: '',
     prioridad: 'media',
     fecha_solicitud: new Date().toISOString().split('T')[0],
-    encargado1: '',
-    encargado2: '',
-    encargado3: '',
-    encargado4: '',
+
     descripcion: '',
     razon: '',
     fecha_deseada: '',
@@ -32,6 +30,7 @@ export default function FormSolicitud() {
 
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(isEdit);
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     if (isEdit) {
@@ -46,15 +45,12 @@ export default function FormSolicitud() {
         ...data,
         fecha_solicitud: data.fecha_solicitud?.split('T')[0] || '',
         fecha_deseada: data.fecha_deseada?.split('T')[0] || '',
-        encargado2: data.encargado2 || '',
-        encargado3: data.encargado3 || '',
-        encargado4: data.encargado4 || '',
         tipo_cambio: data.tipo_cambio || '',
         impacto: data.impacto || ''
       });
     } catch (error) {
-      alert('Error al cargar solicitud');
-      navigate('/solicitudes');
+      setToast({ message: 'Error al cargar solicitud', type: 'error' });
+      setTimeout(() => navigate('/solicitudes'), 2000);
     } finally {
       setLoadingData(false);
     }
@@ -75,14 +71,14 @@ export default function FormSolicitud() {
     try {
       if (isEdit) {
         await API.updateSolicitud(id, form);
-        alert('Solicitud actualizada correctamente');
+        setToast({ message: 'Solicitud actualizada correctamente', type: 'success' });
       } else {
         await API.createSolicitud(form);
-        alert('Solicitud creada correctamente');
+        setToast({ message: 'Solicitud creada correctamente', type: 'success' });
       }
-      navigate('/solicitudes');
+      setTimeout(() => navigate('/solicitudes'), 1500);
     } catch (error) {
-      alert(`Error al ${isEdit ? 'actualizar' : 'crear'} solicitud`);
+      setToast({ message: `Error al ${isEdit ? 'actualizar' : 'crear'} solicitud`, type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -94,6 +90,7 @@ export default function FormSolicitud() {
 
   return (
     <div className="max-w-4xl mx-auto">
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <h1 className="text-3xl font-bold text-gray-800 mb-6">
         {isEdit ? 'Editar' : 'Nueva'} Solicitud de Cambio
       </h1>
@@ -209,55 +206,7 @@ export default function FormSolicitud() {
           </div>
         </div>
 
-        {/* Encargados */}
-        <div className="border-b pb-4">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Encargados</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Encargado 1 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                name="encargado1"
-                value={form.encargado1}
-                onChange={handleChange}
-                required
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Encargado 2</label>
-              <input
-                type="text"
-                name="encargado2"
-                value={form.encargado2}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Encargado 3</label>
-              <input
-                type="text"
-                name="encargado3"
-                value={form.encargado3}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Encargado 4</label>
-              <input
-                type="text"
-                name="encargado4"
-                value={form.encargado4}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-        </div>
+
 
         {/* Detalles del cambio */}
         <div className="border-b pb-4">

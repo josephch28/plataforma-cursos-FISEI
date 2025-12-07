@@ -103,8 +103,8 @@ exports.create = async (req, res) => {
     // 4) INSERT usando cedulaAdmin del token
     const [result] = await pool.query(
       `INSERT INTO curso
-       (cedula_admin, cedula_responsable, cedula_docente, nombre, descripcion, tipo, horas, es_pagado, costo, prerequisito, publico_objetivo, nota_aprobacion, requiere_asistencia, fecha_inicio, fecha_fin, activo)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,FALSE)`,
+       (cedula_admin, cedula_responsable, cedula_docente, nombre, descripcion, tipo, horas, es_pagado, costo, prerequisito, publico_objetivo, nota_aprobacion, requiere_asistencia, fecha_inicio, fecha_fin, fecha_inicio_inscripcion, fecha_fin_inscripcion, activo)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,FALSE)`,
       [
         cedulaAdmin,
         b.cedula_responsable,
@@ -120,7 +120,9 @@ exports.create = async (req, res) => {
         b.nota_aprobacion ?? 7.0,
         b.requiere_asistencia ?? true,
         b.fecha_inicio || null,
-        b.fecha_fin || null
+        b.fecha_fin || null,
+        b.fecha_inicio_inscripcion || null,
+        b.fecha_fin_inscripcion || null
       ]
     );
 
@@ -174,8 +176,9 @@ exports.update = async (req, res) => {
     const fields = [];
     const params = [];
     const allowed = [
-      'cedula_responsable','cedula_docente','nombre','descripcion','tipo','horas','es_pagado','costo',
-      'prerequisito','publico_objetivo','nota_aprobacion','requiere_asistencia','fecha_inicio','fecha_fin'
+      'cedula_responsable', 'cedula_docente', 'nombre', 'descripcion', 'tipo', 'horas', 'es_pagado', 'costo',
+      'prerequisito', 'publico_objetivo', 'nota_aprobacion', 'requiere_asistencia', 'fecha_inicio', 'fecha_fin',
+      'fecha_inicio_inscripcion', 'fecha_fin_inscripcion'
     ];
 
     for (const k of allowed) {
@@ -225,10 +228,70 @@ exports.activate = async (req, res) => {
       }
     }
 
-    await pool.query('UPDATE curso SET activo = TRUE WHERE id_curso = ?', [req.params.id]);
+    await pool.query('UPDATE curso SET activo = TRUE, estado = "activo" WHERE id_curso = ?', [req.params.id]);
     res.status(200).json({ message: 'Curso activado' });
   } catch (error) {
     console.error('ACTIVATE error:', error);
     res.status(500).json({ message: 'Error al activar curso', error: String(error?.sqlMessage || error?.message || error) });
   }
 };
+
+exports.finalize = async (req, res) => {
+  try {
+    const { v4: uuidv4 } = require('uuid');
+    const cedula = req.user?.cedula;
+    const rol = req.user?.rol;
+    if (!cedula) return res.status(401).json({ message: 'Sesión inválida' });
+
+    // 1. Verificar Permisos (Responsable o Admin)
+    if (rol !== 'admin') {
+      const [[curso]] = await pool.query(
+        'SELECT cedula_responsable FROM curso WHERE id_curso = ?',
+        [req.params.id]
+      );
+      if (!curso || curso.cedula_responsable !== cedula) {
+        return res.status(403).json({ message: 'No autorizado para finalizar este curso' });
+      }
+    }
+
+    // 2. Actualizar Estado del Curso
+    // Se "cierra" el curso (estado='finalizado'), y se desactiva para inscripciones (activo=FALSE)
+    await pool.query(
+      "UPDATE curso SET estado = 'finalizado', activo = FALSE WHERE id_curso = ?",
+      [req.params.id]
+    );
+
+    // 3. Obtener estudiantes aprobados sin certificado previo
+    // (Asumimos que si ya tienen certificado, no generamos otro, o regeneramos? Mejor ignorar duplicados)
+    const [inscripciones] = await pool.query(`
+        SELECT i.id_inscripcion, u.nombre, u.apellido
+        FROM inscripcion i
+        JOIN usuario u ON i.cedula_estudiante = u.cedula
+        WHERE i.id_curso = ? 
+          AND i.estado = 'aprobado'
+          AND NOT EXISTS (SELECT 1 FROM certificados c WHERE c.id_inscripcion = i.id_inscripcion)
+    `, [req.params.id]);
+
+    // 4. Generar registros de Certificados
+    let generated = 0;
+    for (const insc of inscripciones) {
+      const code = uuidv4();
+      await pool.query(
+        'INSERT INTO certificados (id_inscripcion, codigo_verificacion) VALUES (?, ?)',
+        [insc.id_inscripcion, code]
+      );
+      generated++;
+    }
+
+    res.json({
+      message: 'Curso finalizado correctamente',
+      generated_certificates: generated,
+      total_students: inscripciones.length
+    });
+
+  } catch (error) {
+    console.error('FINALIZE error:', error);
+    res.status(500).json({ message: 'Error al finalizar curso', error: String(error?.sqlMessage || error?.message || error) });
+  }
+};
+

@@ -9,6 +9,10 @@ app.use(express.json());
 
 // Servir archivos subidos desde src/uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Servir Formulario de Cambios (se encuentra en ../../FormularioCambios relativa a src/app.js)
+app.use('/formulario', express.static(path.join(__dirname, '../../FormularioCambios')));
+
 app.use('/api/auth', require('./routes/auth.routes'));
 app.use('/api/cursos', require('./routes/cursos.routes'));
 app.use('/api/cursos', require('./routes/encargados.routes'));
@@ -19,6 +23,8 @@ app.use('/api/usuarios', usuariosRoutes);
 const solicitudesRoutes = require('./routes/solicitudes.routes');
 app.use('/api/solicitudes', solicitudesRoutes);
 app.use('/api/pagos', require('./routes/pagos.routes'));
+app.use('/api/dashboard', require('./routes/dashboard.routes'));
+app.use('/api/certificados', require('./routes/certificados.routes'));
 
 app.use((err, req, res, next) => {
   console.error(err);

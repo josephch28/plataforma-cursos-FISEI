@@ -12,6 +12,8 @@ import UsuariosEditPage from './modules/usuarios/UsuariosEditPage';
 import LoginPage from './modules/auth/LoginPage';
 import AppLayout from './layouts/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
+import RoleProtectedRoute from './components/RoleProtectedRoute';
+import RoleBasedRedirect from './components/RoleBasedRedirect';
 import './index.css';
 import DashboardPage from './modules/dashboard/DashboardPage';
 import SolicitudesListPage from './modules/solicitudes/SolicitudesListPage';
@@ -24,38 +26,59 @@ import MisCursosPage from './modules/misCursos/MisCursosPage';
 
 export default function App() {
   // const auth = { rol: 'admin', cedula: '0101010101' }; // <-- ¡ELIMINADO! Ya no necesitamos esto.
-  
+
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
-            <Route path="/" element={<Navigate to="/catalogo" />} />
-            <Route path="/catalogo" element={<CursosCatalogoPage />} /> 
-            <Route path="/pago/:idInscripcion/subir" element={<PagoSubirPage />} />
-            <Route path="/mis-cursos" element={<MisCursosPage />} />
-            <Route path="/dashboard" element={<DashboardPage />} />
-            <Route path="/pagos" element={<AprobacionPagosPage />} />
+            <Route path="/" element={<RoleBasedRedirect />} />
 
-            {/* Fíjate que ya no pasamos auth={...} */}
-            <Route path="/cursos" element={<CursosListPage />} />
-            <Route path="/cursos/nuevo" element={<CursosCreatePage />} />
-            <Route path="/cursos/:id/editar" element={<CursosEditPage />} />
-            
-            <Route path="/evaluaciones" element={<EvaluacionesListPage />} />
-            <Route path="/evaluaciones/nueva" element={<EvaluacionesCreatePage />} />
-            <Route path="/evaluaciones/:id/editar" element={<EvaluacionesEditPage />} />
-            
-            <Route path="/usuarios" element={<UsuariosListPage />} />
-            <Route path="/usuarios/nuevo" element={<UsuariosCreatePage />} />
-            <Route path="/usuarios/:cedula/editar" element={<UsuariosEditPage />} />
-            
-            <Route path="/inscripciones" element={<EvaluacionesListPage />} />
-            <Route path="/solicitudes" element={<SolicitudesListPage />} />
-            <Route path="/solicitudes/nueva" element={<FormSolicitud />} />
-            <Route path="/solicitudes/:id/editar" element={<FormSolicitud />} />
-            <Route path="/solicitudes/dashboard" element={<DashboardDevelop />} />
+            {/* Rutas públicas (requieren autenticación pero no rol específico) */}
+            <Route path="/pago/:idInscripcion/subir" element={<PagoSubirPage />} />
+
+            {/* Rutas para Admin y Develop */}
+            <Route element={<RoleProtectedRoute allowedRoles={['admin', 'develop']} />}>
+              <Route path="/dashboard" element={<DashboardPage />} />
+            </Route>
+
+            {/* Rutas solo para Admin */}
+            <Route element={<RoleProtectedRoute allowedRoles={['admin']} />}>
+              <Route path="/pagos" element={<AprobacionPagosPage />} />
+              <Route path="/usuarios" element={<UsuariosListPage />} />
+              <Route path="/usuarios/nuevo" element={<UsuariosCreatePage />} />
+              <Route path="/usuarios/:cedula/editar" element={<UsuariosEditPage />} />
+              <Route path="/inscripciones" element={<EvaluacionesListPage />} />
+            </Route>
+
+            {/* Rutas para Admin y Responsable (Gestión de Cursos) */}
+            <Route element={<RoleProtectedRoute allowedRoles={['admin', 'responsable']} />}>
+              <Route path="/cursos" element={<CursosListPage />} />
+              <Route path="/cursos/nuevo" element={<CursosCreatePage />} />
+              <Route path="/cursos/:id/editar" element={<CursosEditPage />} />
+            </Route>
+
+            {/* Rutas para Responsable y Usuario (Evaluaciones) */}
+            <Route element={<RoleProtectedRoute allowedRoles={['responsable', 'usuario']} />}>
+              <Route path="/evaluaciones" element={<EvaluacionesListPage />} />
+              <Route path="/evaluaciones/nueva" element={<EvaluacionesCreatePage />} />
+              <Route path="/evaluaciones/:id/editar" element={<EvaluacionesEditPage />} />
+            </Route>
+
+            {/* Rutas para Usuario y Responsable (Catálogo y Mis Cursos) */}
+            <Route element={<RoleProtectedRoute allowedRoles={['usuario', 'responsable']} />}>
+              <Route path="/catalogo" element={<CursosCatalogoPage />} />
+              <Route path="/mis-cursos" element={<MisCursosPage />} />
+            </Route>
+
+            {/* Rutas para Develop y Comité */}
+            <Route element={<RoleProtectedRoute allowedRoles={['develop', 'comite']} />}>
+              <Route path="/solicitudes" element={<SolicitudesListPage />} />
+              <Route path="/solicitudes/nueva" element={<FormSolicitud />} />
+              <Route path="/solicitudes/:id/editar" element={<FormSolicitud />} />
+              <Route path="/solicitudes/dashboard" element={<DashboardDevelop />} />
+            </Route>
           </Route>
         </Route>
       </Routes>

@@ -4,7 +4,7 @@ import { HiOutlineUserGroup, HiOutlineBookOpen, HiOutlineClipboardList, HiOutlin
 import { useAuth } from '../context/AuthContext';
 
 const allMenuItems = [
-  { key: 'dashboard', label: 'Dashboard', to: '/dashboard', icon: HiOutlineHome, roles: ['admin', 'develop'] },
+  { key: 'dashboard', label: 'Dashboard', to: '/solicitudes/dashboard', icon: HiOutlineHome, roles: ['admin', 'develop', 'comite'] },
   { key: 'catalogo', label: 'Cursos (Catálogo)', to: '/catalogo', icon: HiOutlineBookOpen, roles: ['usuario'] },
   { key: 'mis-cursos', label: 'Mis Cursos', to: '/mis-cursos', icon: HiOutlineClipboardList, roles: ['usuario', 'responsable'] },
   { key: 'pagos', label: 'Aprobación Pagos', to: '/pagos', icon: HiOutlineCheckCircle, roles: ['admin'] },
@@ -12,7 +12,8 @@ const allMenuItems = [
   { key: 'cursos', label: 'Cursos', to: '/cursos', icon: HiOutlineBookOpen, roles: ['admin', 'responsable'] },
   { key: 'inscripciones', label: 'Inscripciones', to: '/inscripciones', icon: HiOutlineClipboardList, roles: ['admin'] },
   { key: 'evaluaciones', label: 'Evaluaciones', to: '/evaluaciones', icon: HiOutlineCheckCircle, roles: ['responsable', 'usuario'] },
-  { key: 'solicitudes', label: 'Solicitudes', to: '/solicitudes', icon: HiOutlineClipboardList, roles: ['develop'] }
+  { key: 'solicitudes', label: 'Solicitudes', to: '/solicitudes', icon: HiOutlineClipboardList, roles: ['develop', 'comite'] },
+  { key: 'cambios', label: 'Gestión de Cambios', to: '/formulario/index.html', icon: HiOutlineClipboardList, roles: ['usuario', 'responsable', 'admin', 'develop'], external: true }
 ];
 
 export default function AppLayout() {
@@ -41,33 +42,49 @@ export default function AppLayout() {
           )}
         </div>
         <nav className="flex flex-col px-3 space-y-1 flex-1">
-          {menu.map(item => (
-            <NavLink
-              key={item.key}
-              to={item.to}
-              className={({ isActive }) =>
-                `flex items-center px-4 py-2.5 rounded-lg text-sm font-bold cursor-pointer transition-all duration-150 ${
-                  isActive
+          {menu.map(item => {
+            if (item.external) {
+              return (
+                <a
+                  key={item.key}
+                  href={item.to}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center px-4 py-2.5 rounded-lg text-sm font-bold cursor-pointer transition-all duration-150 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+                >
+                  <item.icon className="mr-2 text-lg text-blue-600" />
+                  <span>{item.label}</span>
+                </a>
+              )
+            }
+            return (
+              <NavLink
+                key={item.key}
+                to={item.to}
+                end={true}
+                className={({ isActive }) =>
+                  `flex items-center px-4 py-2.5 rounded-lg text-sm font-bold cursor-pointer transition-all duration-150 ${isActive
                     ? 'bg-blue-600 text-white shadow'
                     : 'text-blue-600 hover:bg-blue-50 hover:text-blue-700'
-                }`
-              }
-            >
-              {({ isActive }) => {
-                const Icon = item.icon;
-                return (
-                  <>
-                    <Icon className={`mr-2 text-lg ${isActive ? 'text-white' : 'text-blue-600'}`} />
-                    <span className={isActive ? 'text-white' : 'text-blue-600'}>
-                      {item.label}
-                    </span>
-                  </>
-                );
-              }}
-            </NavLink>
-          ))}
+                  }`
+                }
+              >
+                {({ isActive }) => {
+                  const Icon = item.icon;
+                  return (
+                    <>
+                      <Icon className={`mr-2 text-lg ${isActive ? 'text-white' : 'text-blue-600'}`} />
+                      <span className={isActive ? 'text-white' : 'text-blue-600'}>
+                        {item.label}
+                      </span>
+                    </>
+                  );
+                }}
+              </NavLink>
+            )
+          })}
         </nav>
-        
+
         {/* Botón de Cerrar Sesión */}
         <div className="p-3 border-t border-gray-200">
           <button

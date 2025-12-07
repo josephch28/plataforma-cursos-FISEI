@@ -11,4 +11,10 @@ router.post('/', create);
 router.put('/:id', update);
 router.delete('/:id', remove);
 
+// Workflow routes
+router.post('/:id/aprobar', require('../controllers/solicitudes.controller').aprobar);
+router.post('/:id/rechazar', require('../controllers/solicitudes.controller').rechazar);
+router.post('/:id/realizar', require('../controllers/solicitudes.controller').realizar);
+router.post('/:id/verificar', require('../controllers/solicitudes.controller').verificar);
+
 module.exports = router;

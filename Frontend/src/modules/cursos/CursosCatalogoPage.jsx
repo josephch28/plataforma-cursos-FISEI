@@ -29,7 +29,7 @@ export default function CursosCatalogoPage() {
   // 🆕 FUNCIÓN PARA CONSTRUIR PARÁMETROS DE API (REUSADA DE TABLACURSOS.JSX)
   const buildParams = () => {
     // inactivo: false asegura que solo vemos cursos activos
-    const params = { q, inactivo: false }; 
+    const params = { q, inactivo: false };
     if (tipoFiltro) params.tipo = tipoFiltro;
     if (publicoFiltro) params.publico_objetivo = publicoFiltro;
 
@@ -57,7 +57,7 @@ export default function CursosCatalogoPage() {
         API.listCursos(params).catch(() => []),
         API.getUserCourses().catch(() => [])
       ]);
-      
+
       setCursos(cursosData);
       const inscritos = (cursosUsuario || [])
         .filter(c => c.rol === 'estudiante')
@@ -77,7 +77,7 @@ export default function CursosCatalogoPage() {
       loadData();
     }, 300);
     return () => clearTimeout(timer);
-  // Añadir todas las dependencias del filtro para re-consultar la API
+    // Añadir todas las dependencias del filtro para re-consultar la API
   }, [q, horasFiltro, tipoFiltro, publicoFiltro, user]);
 
   const openModal = (curso) => {
@@ -117,21 +117,21 @@ export default function CursosCatalogoPage() {
 
       const actions = result.requires_payment && result.id_inscripcion
         ? [
-            {
-              label: 'Subir comprobante',
-              action: () => nav(`/pago/${result.id_inscripcion}/subir`)
-            },
-            {
-              label: 'Ir a Mis cursos',
-              action: () => nav('/mis-cursos')
-            }
-          ]
+          {
+            label: 'Subir comprobante',
+            action: () => nav(`/pago/${result.id_inscripcion}/subir`)
+          },
+          {
+            label: 'Ir a Mis cursos',
+            action: () => nav('/mis-cursos')
+          }
+        ]
         : [
-            {
-              label: 'Ver mis cursos',
-              action: () => nav('/mis-cursos')
-            }
-          ];
+          {
+            label: 'Ver mis cursos',
+            action: () => nav('/mis-cursos')
+          }
+        ];
 
       setFeedback({
         type: 'success',
@@ -173,17 +173,48 @@ export default function CursosCatalogoPage() {
         ? curso.docentes_extra.includes(user?.cedula)
         : false;
 
+      // 🆕 Check de Fechas de Inscripción
+      const now = new Date();
+      // Set to 00:00:00 to compare dates strictly if needed, but let's compare as times or just string logic.
+      // If we used DATE in DB, JS parses as UTC usually, be careful with timezones.
+      // Easiest is to assume strict comparison.
+
+      let datesOk = true;
+      let dateReason = null;
+
+      if (curso.fecha_inicio_inscripcion) {
+        const start = new Date(curso.fecha_inicio_inscripcion);
+        if (now < start) {
+          datesOk = false;
+          dateReason = `Inscripciones inician el ${start.toLocaleDateString()}`;
+        }
+      }
+
+      if (datesOk && curso.fecha_fin_inscripcion) {
+        const end = new Date(curso.fecha_fin_inscripcion);
+        // Add 1 day if we want inclusive end date? 
+        // For now strict comparison.
+        if (now > end) {
+          datesOk = false;
+          dateReason = `Inscripciones cerraron el ${end.toLocaleDateString()}`;
+        }
+      }
+
+      const canEnroll = usuarioCumplePublico && cumplePrerrequisito && !esResponsable && !esDocente && !esEncargado && datesOk;
+
       const data = {
         ...curso,
         publicoTexto,
-        canEnroll: usuarioCumplePublico && cumplePrerrequisito && !esResponsable && !esDocente && !esEncargado,
+        canEnroll, // already calculated
         razonBloqueo: esResponsable || esDocente || esEncargado
           ? 'Eres responsable/docente de este curso'
           : !usuarioCumplePublico
-          ? 'No cumples el público objetivo'
-          : !cumplePrerrequisito
-            ? 'Prerrequisito no aprobado'
-            : null
+            ? 'No cumples el público objetivo'
+            : !cumplePrerrequisito
+              ? 'Prerrequisito no aprobado'
+              : !datesOk
+                ? dateReason
+                : null
       };
 
       if (inscritosIds.has(curso.id_curso)) {
@@ -200,9 +231,8 @@ export default function CursosCatalogoPage() {
   const renderCard = (curso, disabled = false) => (
     <div
       key={curso.id_curso}
-      className={`bg-white p-6 rounded-lg shadow transition-shadow border-t-4 ${
-        disabled ? 'border-red-500 opacity-70' : 'border-blue-600 hover:shadow-lg'
-      }`}
+      className={`bg-white p-6 rounded-lg shadow transition-shadow border-t-4 ${disabled ? 'border-red-500 opacity-70' : 'border-blue-600 hover:shadow-lg'
+        }`}
     >
       <h2 className="text-xl font-bold text-gray-800 mb-2">{curso.nombre}</h2>
       <p className="text-sm text-blue-600 font-medium capitalize mb-4">
@@ -219,7 +249,7 @@ export default function CursosCatalogoPage() {
         )}
         {disabled && (
           <p className="text-red-600 font-semibold">
-            Tu perfil no cumple el público objetivo o los requisitos de inscripción.
+            {curso.razonBloqueo || 'Tu perfil no cumple los requisitos.'}
           </p>
         )}
       </div>
@@ -243,9 +273,8 @@ export default function CursosCatalogoPage() {
         <button
           disabled={disabled}
           onClick={() => openModal(curso)}
-          className={`px-4 py-2 text-sm rounded-lg font-semibold ${
-            disabled ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'
-          }`}
+          className={`px-4 py-2 text-sm rounded-lg font-semibold ${disabled ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700'
+            }`}
         >
           {disabled ? 'No disponible' : 'Inscribirse'}
         </button>
@@ -261,11 +290,10 @@ export default function CursosCatalogoPage() {
     <div className="space-y-10">
       {feedback && (
         <div
-          className={`rounded-xl border px-5 py-4 flex flex-col gap-2 ${
-            feedback.type === 'success'
-              ? 'border-green-200 bg-green-50 text-green-800'
-              : 'border-red-200 bg-red-50 text-red-800'
-          }`}
+          className={`rounded-xl border px-5 py-4 flex flex-col gap-2 ${feedback.type === 'success'
+            ? 'border-green-200 bg-green-50 text-green-800'
+            : 'border-red-200 bg-red-50 text-red-800'
+            }`}
         >
           <div className="text-lg font-semibold">{feedback.title}</div>
           <p className="text-sm">{feedback.message}</p>
@@ -288,7 +316,7 @@ export default function CursosCatalogoPage() {
       <section>
         <h1 className="text-3xl font-bold text-gray-900">Catálogo de Cursos</h1>
         <p className="text-gray-600">Busca entre los eventos disponibles y regístrate.</p>
-        
+
         {/* 🆕 BARRA DE BÚSQUEDA Y FILTROS */}
         <div className="p-4 border border-gray-200 rounded-lg mt-6 bg-white shadow-sm">
           <input

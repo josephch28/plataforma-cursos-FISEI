@@ -103,8 +103,8 @@ exports.create = async (req, res) => {
     // 4) INSERT usando cedulaAdmin del token
     const [result] = await pool.query(
       `INSERT INTO curso
-       (cedula_admin, cedula_responsable, cedula_docente, nombre, descripcion, tipo, horas, es_pagado, costo, prerequisito, publico_objetivo, nota_aprobacion, requiere_asistencia, fecha_inicio, fecha_fin, fecha_inicio_inscripcion, fecha_fin_inscripcion, activo)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,FALSE)`,
+       (cedula_admin, cedula_responsable, cedula_docente, nombre, descripcion, tipo, horas, es_pagado, costo, prerequisito, publico_objetivo, nota_aprobacion, requiere_asistencia, fecha_inicio, fecha_fin, fecha_inicio_inscripcion, fecha_fin_inscripcion, activo, estado)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,FALSE, 'creado')`,
       [
         cedulaAdmin,
         b.cedula_responsable,
@@ -203,7 +203,7 @@ exports.update = async (req, res) => {
 
 exports.remove = async (req, res) => {
   try {
-    await pool.query('UPDATE curso SET activo = FALSE WHERE id_curso = ?', [req.params.id]);
+    await pool.query('UPDATE curso SET activo = FALSE, estado = "creado" WHERE id_curso = ?', [req.params.id]);
     res.status(204).send();
   } catch (error) {
     console.error('REMOVE error:', error);

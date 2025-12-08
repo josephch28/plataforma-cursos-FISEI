@@ -85,7 +85,26 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
   useEffect(() => { setPag(1); load(); }, [horasFiltro, tipoFiltro, publicoFiltro]);
 
   const confirmDelete = (id) => setDeleteModal(id);
-  const confirmActivate = (id) => setActivateModal(id);
+
+  const confirmActivate = (id) => {
+    // Validation: Ensure course has critical info before activation
+    const course = rows.find(r => r.id_curso === id);
+    if (!course) return;
+
+    const missing = [];
+    if (!course.fecha_inicio) missing.push('Fecha Inicio');
+    if (!course.fecha_fin) missing.push('Fecha Fin');
+    if (!course.horas || course.horas <= 0) missing.push('Horas');
+    if (!course.tipo) missing.push('Tipo');
+    if (course.es_pagado && (!course.costo || course.costo <= 0)) missing.push('Costo');
+
+    if (missing.length > 0) {
+      showToast(`Complete la información primero: ${missing.join(', ')}`, 'error');
+      return;
+    }
+
+    setActivateModal(id);
+  };
 
   const executeDelete = async () => {
     try {

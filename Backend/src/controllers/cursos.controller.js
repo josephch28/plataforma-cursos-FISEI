@@ -269,7 +269,7 @@ exports.finalize = async (req, res) => {
         JOIN usuario u ON i.cedula_estudiante = u.cedula
         WHERE i.id_curso = ? 
           AND i.estado = 'aprobado'
-          AND NOT EXISTS (SELECT 1 FROM certificados c WHERE c.id_inscripcion = i.id_inscripcion)
+          AND NOT EXISTS (SELECT 1 FROM certificado c WHERE c.id_inscripcion = i.id_inscripcion)
     `, [req.params.id]);
 
     // 4. Generar registros de Certificados
@@ -277,7 +277,7 @@ exports.finalize = async (req, res) => {
     for (const insc of inscripciones) {
       const code = uuidv4();
       await pool.query(
-        'INSERT INTO certificados (id_inscripcion, codigo_verificacion) VALUES (?, ?)',
+        'INSERT INTO certificado (id_inscripcion, codigo_verificacion) VALUES (?, ?)',
         [insc.id_inscripcion, code]
       );
       generated++;

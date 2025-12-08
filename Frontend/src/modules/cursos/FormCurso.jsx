@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Select from 'react-select';
 import { API } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 
 const isTenDigits = (v) => /^[0-9]{10}$/.test(v || '');
 
@@ -20,7 +21,10 @@ const PUBLICO_OPTIONS = [
   { value: 'Público General', label: 'Público General' },
 ];
 
-export default function FormCurso({ initial = {}, onSaved, auth }) {
+export default function FormCurso({ initial = {}, onSaved }) {
+  const { user, token } = useAuth();
+  // alias auth param to token if needed by API calls that expect 'auth'
+  const auth = token;
   const [data, setData] = useState({
     cedula_responsable: initial.cedula_responsable || '',
     cedula_docente: initial.cedula_docente || '',
@@ -53,6 +57,13 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
 
   const [mensaje, setMensaje] = useState(null);
   const navigate = useNavigate();
+
+  // Determine if locked (Active course + Restriction rule)
+  // Logic: Locked if Active AND not Finalized (allow finalizing elsewhere maybe? No, changes restricted)
+  // "Reglas de curso solo modificables cuando el curso está inhabilitado"
+  // If no 'inactivo' prop, we infer active if it has an ID and state indicates active.
+  // We prioritize 'initial.estado' if available, otherwise check !inactivo if available.
+  const isLocked = initial.estado === 'activo' || (initial.id_curso && initial.inactivo === false && initial.estado !== 'finalizado');
 
   useEffect(() => {
     API.listUsuarios({}, auth).then(setUsuarios);
@@ -170,6 +181,11 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
 
   return (
     <form onSubmit={save} className="space-y-5">
+      {isLocked && (
+        <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 p-4 rounded-lg text-sm mb-4">
+          <strong>Modo Lectura:</strong> Este curso está activo. Para modificar reglas críticas (fechas, horas, costos), primero debe desactivarlo.
+        </div>
+      )}
       {mensaje && (
         <div className={`rounded p-3 text-sm ${mensaje.tipo === 'exito' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
           {mensaje.texto}
@@ -204,10 +220,11 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
       <div>
         <label className={labelClass}>Nombre del curso</label>
         <input
-          className={inputClass}
+          className={`${inputClass} ${isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
           value={data.nombre}
           onChange={(e) => setData({ ...data, nombre: e.target.value })}
           required
+          disabled={isLocked}
         />
         {errors.nombre && <p className="text-xs text-red-600 mt-1">{errors.nombre}</p>}
       </div>
@@ -228,9 +245,10 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
         <div>
           <label className={labelClass}>Tipo</label>
           <select
-            className={inputClass}
+            className={`${inputClass} ${isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             value={data.tipo}
             onChange={(e) => setData({ ...data, tipo: e.target.value })}
+            disabled={isLocked}
           >
             <option value="">Selecciona</option>
             <option value="Curso">Curso</option>
@@ -241,12 +259,13 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
         <div>
           <label className={labelClass}>Horas</label>
           <input
-            className={inputClass}
+            className={`${inputClass} ${isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             type="number"
             min={1}
             value={data.horas}
             onChange={(e) => setData({ ...data, horas: e.target.value })}
             placeholder="Ej. 20"
+            disabled={isLocked}
           />
           {errors.horas && <p className="text-xs text-red-600 mt-1">{errors.horas}</p>}
         </div>
@@ -266,6 +285,7 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
           onInputChange={(val, meta) => { if (meta.action === 'input-change') fetchCursos(val || ''); }}
           isClearable
           placeholder="Buscar curso existente..."
+          isDisabled={isLocked}
         />
       </div>
 
@@ -278,6 +298,7 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
           value={publicoValue}
           onChange={(opts) => setData(d => ({ ...d, publico_objetivo: (opts || []).map(o => o.value) }))}
           placeholder="Selecciona uno o más"
+          isDisabled={isLocked}
         />
       </div>
 
@@ -286,22 +307,24 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
         <div>
           <label className={labelClass}>Nota de aprobación</label>
           <input
-            className={inputClass}
+            className={`${inputClass} ${isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             type="number"
             min={0}
             max={10}
             step="0.1"
             value={data.nota_aprobacion}
             onChange={(e) => setData({ ...data, nota_aprobacion: e.target.value })}
+            disabled={isLocked}
           />
           {errors.nota_aprobacion && <p className="text-xs text-red-600 mt-1">{errors.nota_aprobacion}</p>}
         </div>
         <div>
           <label className={labelClass}>Requiere asistencia</label>
           <select
-            className={inputClass}
+            className={`${inputClass} ${isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             value={String(data.requiere_asistencia)}
             onChange={(e) => setData({ ...data, requiere_asistencia: e.target.value === 'true' })}
+            disabled={isLocked}
           >
             <option value="true">Sí</option>
             <option value="false">No</option>
@@ -313,9 +336,10 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
       <div>
         <label className={labelClass}>Es pagado</label>
         <select
-          className={inputClass}
+          className={`${inputClass} ${isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
           value={String(data.es_pagado)}
           onChange={(e) => setData({ ...data, es_pagado: e.target.value === 'true' })}
+          disabled={isLocked}
         >
           <option value="false">No</option>
           <option value="true">Sí</option>
@@ -325,13 +349,14 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
         <div>
           <label className={labelClass}>Costo (USD)</label>
           <input
-            className={inputClass}
+            className={`${inputClass} ${isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             type="number"
             min="0"
             step="0.01"
             value={data.costo}
             onChange={(e) => setData({ ...data, costo: e.target.value })}
             placeholder="Ej. 120.00"
+            disabled={isLocked}
           />
           {errors.costo && <p className="text-xs text-red-600 mt-1">{errors.costo}</p>}
         </div>
@@ -343,18 +368,20 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
           <label className={labelClass}>Fecha inicio</label>
           <input
             type="date"
-            className={inputClass}
+            className={`${inputClass} ${isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             value={data.fecha_inicio}
             onChange={(e) => setData({ ...data, fecha_inicio: e.target.value })}
+            disabled={isLocked}
           />
         </div>
         <div>
           <label className={labelClass}>Fecha fin</label>
           <input
             type="date"
-            className={inputClass}
+            className={`${inputClass} ${isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             value={data.fecha_fin}
             onChange={(e) => setData({ ...data, fecha_fin: e.target.value })}
+            disabled={isLocked}
           />
           {errors.fecha_fin && <p className="text-xs text-red-600 mt-1">{errors.fecha_fin}</p>}
         </div>
@@ -366,18 +393,20 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
           <label className={labelClass}>Fecha Inicio Inscripción</label>
           <input
             type="date"
-            className={inputClass}
+            className={`${inputClass} ${isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             value={data.fecha_inicio_inscripcion}
             onChange={(e) => setData({ ...data, fecha_inicio_inscripcion: e.target.value })}
+            disabled={isLocked}
           />
         </div>
         <div>
           <label className={labelClass}>Fecha Fin Inscripción</label>
           <input
             type="date"
-            className={inputClass}
+            className={`${inputClass} ${isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             value={data.fecha_fin_inscripcion}
             onChange={(e) => setData({ ...data, fecha_fin_inscripcion: e.target.value })}
+            disabled={isLocked}
           />
           {errors.fecha_fin_inscripcion && <p className="text-xs text-red-600 mt-1">{errors.fecha_fin_inscripcion}</p>}
         </div>
@@ -388,9 +417,11 @@ export default function FormCurso({ initial = {}, onSaved, auth }) {
         <button type="button" className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition" onClick={() => navigate(-1)}>
           Cancelar
         </button>
-        <button type="submit" disabled={busy} className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-60">
-          {busy ? 'Guardando...' : 'Guardar'}
-        </button>
+        {(!isLocked || initial.estado === 'inactivo' || user?.rol === 'admin') && (
+          <button type="submit" disabled={busy} className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-60">
+            {busy ? 'Guardando...' : 'Guardar'}
+          </button>
+        )}
       </div>
     </form>
   );

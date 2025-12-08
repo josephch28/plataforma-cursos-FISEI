@@ -1,7 +1,17 @@
-// src/modules/cursos/TablaCursos.jsx - CON BÚSQUEDA + FILTROS SIN CAMBIAR ESTILO
+// src/modules/cursos/TablaCursos.jsx
 import { useEffect, useMemo, useState } from 'react';
 import { API } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import Toast from '../../components/Toast';
+import Switch from '../../components/Switch';
+import {
+  HiOutlinePencil,
+  HiOutlineSwitchHorizontal,
+  HiOutlineArchive,
+  HiOutlineCheckCircle,
+  HiOutlineX,
+  HiOutlineExclamation
+} from 'react-icons/hi';
 
 export default function TablaCursos({ onEdit, showInactive = false }) {
   const [rows, setRows] = useState([]);
@@ -14,6 +24,9 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
   const [finalizeModal, setFinalizeModal] = useState(null);
   const { user } = useAuth();
 
+  // Toast State
+  const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
   // Filtros
   const [horasFiltro, setHorasFiltro] = useState('');
   const [tipoFiltro, setTipoFiltro] = useState('');
@@ -22,6 +35,11 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
   // Paginación segura
   const hasNext = useMemo(() => rows.length === Number(size), [rows, size]);
   const hasPrev = useMemo(() => pag > 1, [pag]);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ show: true, message, type });
+    setTimeout(() => setToast({ ...toast, show: false }), 3000);
+  };
 
   const buildParams = () => {
     const params = { q, pag, size, inactivo: showInactive };
@@ -74,8 +92,9 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
       await API.deleteCurso(deleteModal);
       setDeleteModal(null);
       await load();
+      showToast('Curso desactivado correctamente', 'success');
     } catch (e) {
-      alert(e?.message || 'No se pudo desactivar');
+      showToast(e?.message || 'No se pudo desactivar', 'error');
       setDeleteModal(null);
     }
   };
@@ -85,8 +104,9 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
       await API.activateCurso(activateModal);
       setActivateModal(null);
       await load();
+      showToast('Curso activado correctamente', 'success');
     } catch (e) {
-      alert(e?.message || 'No se pudo activar');
+      showToast(e?.message || 'No se pudo activar', 'error');
       setActivateModal(null);
     }
   };
@@ -96,15 +116,22 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
       await API.finalizeCurso(finalizeModal);
       setFinalizeModal(null);
       await load();
-      alert('Curso finalizado y certificados generados');
+      showToast('Curso finalizado y certificados generados', 'success');
     } catch (e) {
-      alert(e?.message || 'No se pudo finalizar');
+      showToast(e?.message || 'No se pudo finalizar', 'error');
       setFinalizeModal(null);
     }
   };
 
   return (
     <div>
+      {/* TOAST PANEL */}
+      {toast.show && (
+        <div className="fixed top-4 right-4 z-[9999] animate-fade-in-down">
+          <Toast type={toast.type} message={toast.message} onClose={() => setToast({ ...toast, show: false })} />
+        </div>
+      )}
+
       {/* BARRA DE BÚSQUEDA */}
       <div className="p-4 border-b border-gray-200">
         <input
@@ -117,20 +144,20 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
 
       {/* Filtros */}
       <div className="px-4 py-3 border-b border-gray-200 flex flex-wrap items-center gap-3">
-        <select className="rounded border border-gray-300 px-2 py-1 text-sm" value={horasFiltro} onChange={(e) => setHorasFiltro(e.target.value)}>
+        <select className="rounded border border-gray-300 px-2 py-1 text-sm bg-white" value={horasFiltro} onChange={(e) => setHorasFiltro(e.target.value)}>
           <option value="">Horas: Todas</option>
           <option value="lt10">Menos de 10</option>
           <option value="b10_20">Entre 10 y 20</option>
           <option value="b20_30">Entre 20 y 30</option>
           <option value="gt30">Mayor de 30</option>
         </select>
-        <select className="rounded border border-gray-300 px-2 py-1 text-sm" value={tipoFiltro} onChange={(e) => setTipoFiltro(e.target.value)}>
+        <select className="rounded border border-gray-300 px-2 py-1 text-sm bg-white" value={tipoFiltro} onChange={(e) => setTipoFiltro(e.target.value)}>
           <option value="">Tipo: Todos</option>
           <option value="Curso">Curso</option>
           <option value="Webinar">Webinar</option>
           <option value="Taller">Taller</option>
         </select>
-        <select className="rounded border border-gray-300 px-2 py-1 text-sm" value={publicoFiltro} onChange={(e) => setPublicoFiltro(e.target.value)}>
+        <select className="rounded border border-gray-300 px-2 py-1 text-sm bg-white" value={publicoFiltro} onChange={(e) => setPublicoFiltro(e.target.value)}>
           <option value="">Público: Todos</option>
           <option value="Estudiantes UTA">Estudiantes UTA</option>
           <option value="Personal UTA">Personal UTA</option>
@@ -152,11 +179,17 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
                       {r.tipo || 'Curso'}
                     </span>
                     {isFinalized ? (
-                      <span className="px-2 py-1 text-xs font-bold text-gray-700 bg-gray-100 rounded-full">Finalizado</span>
+                      <span className="px-2 py-1 text-xs font-bold text-gray-700 bg-gray-100 rounded-full flex items-center gap-1">
+                        <HiOutlineArchive className='w-3 h-3' /> Finalizado
+                      </span>
                     ) : showInactive ? (
-                      <span className="px-2 py-1 text-xs font-bold text-yellow-700 bg-yellow-100 rounded-full">Pendiente</span>
+                      <span className="px-2 py-1 text-xs font-bold text-yellow-700 bg-yellow-100 rounded-full flex items-center gap-1">
+                        <HiOutlineExclamation className='w-3 h-3' /> Inactivo
+                      </span>
                     ) : (
-                      <span className="px-2 py-1 text-xs font-bold text-green-700 bg-green-100 rounded-full">Activo</span>
+                      <span className="px-2 py-1 text-xs font-bold text-green-700 bg-green-100 rounded-full flex items-center gap-1">
+                        <HiOutlineCheckCircle className='w-3 h-3' /> Activo
+                      </span>
                     )}
                   </div>
 
@@ -169,26 +202,26 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
                   <div className="pt-4 border-t border-gray-100 flex gap-2 flex-wrap">
                     {!isFinalized && (
                       <button onClick={() => onEdit(r)} className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 ${showInactive ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                        <HiOutlinePencil className="w-4 h-4" />
                         {showInactive ? 'Completar Info' : 'Editar'}
                       </button>
                     )}
-                    {showInactive && !isFinalized && (
-                      <button onClick={() => confirmActivate(r.id_curso)} className="py-2 px-3 rounded-lg bg-green-600 text-white text-sm font-medium hover:bg-green-700 transition flex items-center justify-center gap-1" title="Activar Curso">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                        Activar
-                      </button>
+                    {showInactive ? (
+                      <div className="flex items-center gap-2 justify-center py-2 px-3">
+                        <span className="text-sm font-medium text-gray-600">Activar:</span>
+                        <Switch checked={false} onChange={() => confirmActivate(r.id_curso)} color="green" />
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 justify-center py-2 px-3">
+                        <span className="text-sm font-medium text-gray-600">Estado:</span>
+                        <Switch checked={true} onChange={() => confirmDelete(r.id_curso)} color="green" />
+                      </div>
                     )}
                     {!showInactive && !isFinalized && (
-                      <>
-                        <button onClick={() => setFinalizeModal(r.id_curso)} className="py-2 px-3 rounded-lg bg-gray-800 text-white hover:bg-gray-900 transition flex items-center justify-center gap-1" title="Finalizar y Certificar">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                          Finalizar
-                        </button>
-                        <button onClick={() => confirmDelete(r.id_curso)} className="py-2 px-3 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 transition" title="Desactivar">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                      </>
+                      <button onClick={() => setFinalizeModal(r.id_curso)} className="py-2 px-3 rounded-lg bg-gray-800 text-white hover:bg-gray-900 transition flex items-center justify-center gap-1" title="Finalizar y Certificar">
+                        <HiOutlineArchive className="w-4 h-4" />
+                        Finalizar
+                      </button>
                     )}
                     {isFinalized && (
                       <div className="w-full text-center text-sm text-gray-500 italic py-2">Curso Cerrado - Certificados Generados</div>
@@ -213,6 +246,7 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Horas</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Responsable</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fechas</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Activo</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
               </tr>
             </thead>
@@ -224,21 +258,22 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
                   <td className="px-6 py-4 text-sm text-gray-500">{r.horas ?? '-'}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">{r.cedula_responsable}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">{(r.fecha_inicio || '-') + ' — ' + (r.fecha_fin || '-')}</td>
+                  <td className="px-6 py-4 text-center">
+                    {!showInactive ? (
+                      <div title="Desactivar Curso" className="inline-block">
+                        <Switch checked={true} onChange={() => confirmDelete(r.id_curso)} color="green" />
+                      </div>
+                    ) : (
+                      <div title="Activar Curso" className="inline-block">
+                        <Switch checked={false} onChange={() => confirmActivate(r.id_curso)} color="green" />
+                      </div>
+                    )}
+                  </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
                       <button onClick={() => onEdit(r)} title="Editar" className="p-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                        <HiOutlinePencil className="w-4 h-4" />
                       </button>
-                      {!showInactive && (
-                        <button onClick={() => confirmDelete(r.id_curso)} title="Desactivar" className="p-2 rounded bg-red-600 text-white hover:bg-red-700 transition">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                        </button>
-                      )}
-                      {showInactive && (
-                        <button onClick={() => confirmActivate(r.id_curso)} title="Activar" className="p-2 rounded bg-green-600 text-white hover:bg-green-700 transition">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        </button>
-                      )}
                     </div>
                   </td>
                 </tr>
@@ -247,7 +282,8 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
             </tbody>
           </table>
         </div>
-      )}
+      )
+      }
 
       {/* Paginación */}
       <div className="px-4 py-4 flex items-center justify-between border-t border-gray-200">
@@ -265,46 +301,63 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
       </div>
 
       {/* MODALES */}
-      {deleteModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">¿Desactivar curso?</h3>
-              <div className="flex gap-3 justify-end mt-4">
-                <button onClick={() => setDeleteModal(null)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition">Cancelar</button>
-                <button onClick={executeDelete} className="px-4 py-2 rounded-lg bg-red-600 text-white hover:bg-red-700 transition">Desactivar</button>
+      {
+        deleteModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full animate-fade-in-up overflow-hidden">
+              <div className="p-8 text-center">
+                <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <HiOutlineSwitchHorizontal className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">¿Desactivar curso?</h3>
+                <p className="text-gray-500 mb-6">El curso dejará de ser visible para los estudiantes. Puedes reactivarlo después en la pestaña "Desactivados".</p>
+                <div className="flex gap-3 justify-center">
+                  <button onClick={() => setDeleteModal(null)} className="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition w-full">Cancelar</button>
+                  <button onClick={executeDelete} className="px-5 py-2.5 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-lg shadow-red-600/30 transition w-full">Desactivar</button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-      {activateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">¿Activar curso?</h3>
-              <div className="flex gap-3 justify-end mt-4">
-                <button onClick={() => setActivateModal(null)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition">Cancelar</button>
-                <button onClick={executeActivate} className="px-4 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition">Activar</button>
+        )
+      }
+      {
+        activateModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full animate-fade-in-up overflow-hidden">
+              <div className="p-8 text-center">
+                <div className="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <HiOutlineSwitchHorizontal className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">¿Activar curso?</h3>
+                <p className="text-gray-500 mb-6">El curso volverá a estar visible y los estudiantes podrán inscribirse.</p>
+                <div className="flex gap-3 justify-center">
+                  <button onClick={() => setActivateModal(null)} className="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition w-full">Cancelar</button>
+                  <button onClick={executeActivate} className="px-5 py-2.5 rounded-xl bg-green-600 text-white font-bold hover:bg-green-700 shadow-lg shadow-green-600/30 transition w-full">Activar</button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-      {finalizeModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">¿Finalizar Curso?</h3>
-              <p className="text-sm text-gray-600 mb-6">El curso pasará a estado de 'Finalizado' y se generarán automáticamente los certificados para los estudiantes aprobados. Esto no se puede deshacer.</p>
-              <div className="flex gap-3 justify-end">
-                <button onClick={() => setFinalizeModal(null)} className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition">Cancelar</button>
-                <button onClick={executeFinalize} className="px-4 py-2 rounded-lg bg-gray-800 text-white hover:bg-gray-900 transition">Confirmar Finalización</button>
+        )
+      }
+      {
+        finalizeModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div className="bg-white rounded-2xl shadow-xl max-w-md w-full animate-fade-in-up overflow-hidden">
+              <div className="p-8 text-center">
+                <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <HiOutlineArchive className="w-8 h-8" />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">¿Finalizar Curso?</h3>
+                <p className="text-gray-500 mb-6">El curso pasará a estado de 'Finalizado' y se generarán automáticamente los certificados para los estudiantes aprobados. <strong className="text-red-600">Esto no se puede deshacer.</strong></p>
+                <div className="flex gap-3 justify-center">
+                  <button onClick={() => setFinalizeModal(null)} className="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition w-full">Cancelar</button>
+                  <button onClick={executeFinalize} className="px-5 py-2.5 rounded-xl bg-blue-800 text-white font-bold hover:bg-blue-900 shadow-lg shadow-blue-800/30 transition w-full">Confirmar</button>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }

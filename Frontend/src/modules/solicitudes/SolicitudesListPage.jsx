@@ -23,6 +23,7 @@ export default function SolicitudesListPage() {
     tipo_cambio: ''
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [deleteModal, setDeleteModal] = useState(null);
 
   // Workflow Solicitudes
   const [activeTab, setActiveTab] = useState(
@@ -196,11 +197,17 @@ export default function SolicitudesListPage() {
     });
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('¿Estás seguro de eliminar esta solicitud?')) return;
+  const handleDelete = (id) => {
+    setDeleteModal(id);
+  };
+
+  const executeDelete = async () => {
+    if (!deleteModal) return;
     try {
-      await API.deleteSolicitud(id);
+      await API.deleteSolicitud(deleteModal);
+      setDeleteModal(null);
       loadSolicitudes();
+      setToast({ message: 'Solicitud eliminada correctamente', type: 'success' });
     } catch (error) {
       setToast({ message: 'Error al eliminar solicitud', type: 'error' });
     }
@@ -247,8 +254,8 @@ export default function SolicitudesListPage() {
           <button
             onClick={() => setShowFilters(!showFilters)}
             className={`px-4 py-2.5 rounded-lg font-medium transition-all duration-200 flex items-center border ${showFilters
-                ? 'bg-gray-100 text-gray-900 border-gray-300'
-                : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+              ? 'bg-gray-100 text-gray-900 border-gray-300'
+              : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300 hover:bg-gray-50'
               }`}
           >
             <HiOutlineFilter className={`mr-2 h-5 w-5 ${showFilters ? 'text-blue-600' : 'text-gray-400'}`} />
@@ -635,6 +642,30 @@ export default function SolicitudesListPage() {
                   Cerrar Detalle
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL ELIMINAR */}
+      {deleteModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100] backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full p-6 text-center animate-fade-in-up">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">¿Eliminar Solicitud?</h3>
+            <p className="text-gray-500 mb-6">Esta acción es irreversible.</p>
+            <div className="flex gap-3 justify-center">
+              <button
+                onClick={() => setDeleteModal(null)}
+                className="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition w-full"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={executeDelete}
+                className="px-5 py-2.5 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-lg shadow-red-600/30 transition w-full"
+              >
+                Eliminar
+              </button>
             </div>
           </div>
         </div>

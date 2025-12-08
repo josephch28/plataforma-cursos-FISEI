@@ -103,8 +103,8 @@ exports.create = async (req, res) => {
     // 4) INSERT usando cedulaAdmin del token
     const [result] = await pool.query(
       `INSERT INTO curso
-       (cedula_admin, cedula_responsable, cedula_docente, nombre, descripcion, tipo, horas, es_pagado, costo, prerequisito, publico_objetivo, nota_aprobacion, requiere_asistencia, fecha_inicio, fecha_fin, fecha_inicio_inscripcion, fecha_fin_inscripcion, activo, estado)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,FALSE, 'creado')`,
+       (cedula_admin, cedula_responsable, cedula_docente, nombre, descripcion, tipo, horas, es_pagado, costo, prerequisito, publico_objetivo, nota_aprobacion, requiere_asistencia, min_asistencia, fecha_inicio, fecha_fin, fecha_inicio_inscripcion, fecha_fin_inscripcion, activo, estado)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,FALSE, 'creado')`,
       [
         cedulaAdmin,
         b.cedula_responsable,
@@ -118,7 +118,9 @@ exports.create = async (req, res) => {
         b.prerequisito ?? null,
         publicoCSV ?? null,
         b.nota_aprobacion ?? 7.0,
+        b.nota_aprobacion ?? 7.0,
         b.requiere_asistencia ?? true,
+        b.min_asistencia ?? 75,
         b.fecha_inicio || null,
         b.fecha_fin || null,
         b.fecha_inicio_inscripcion || null,
@@ -177,7 +179,8 @@ exports.update = async (req, res) => {
     const params = [];
     const allowed = [
       'cedula_responsable', 'cedula_docente', 'nombre', 'descripcion', 'tipo', 'horas', 'es_pagado', 'costo',
-      'prerequisito', 'publico_objetivo', 'nota_aprobacion', 'requiere_asistencia', 'fecha_inicio', 'fecha_fin',
+      'cedula_responsable', 'cedula_docente', 'nombre', 'descripcion', 'tipo', 'horas', 'es_pagado', 'costo',
+      'prerequisito', 'publico_objetivo', 'nota_aprobacion', 'requiere_asistencia', 'min_asistencia', 'fecha_inicio', 'fecha_fin',
       'fecha_inicio_inscripcion', 'fecha_fin_inscripcion'
     ];
 

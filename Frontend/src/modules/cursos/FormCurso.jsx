@@ -37,6 +37,7 @@ export default function FormCurso({ initial = {}, onSaved }) {
     publico_objetivo: initial.publico_objetivo || '',
     nota_aprobacion: initial.nota_aprobacion ?? 7,
     requiere_asistencia: initial.requiere_asistencia ?? true,
+    min_asistencia: initial.min_asistencia ?? 75,
     fecha_inicio: toDateInputValue(initial.fecha_inicio),
     fecha_fin: toDateInputValue(initial.fecha_fin),
     fecha_inicio_inscripcion: toDateInputValue(initial.fecha_inicio_inscripcion),
@@ -133,6 +134,23 @@ export default function FormCurso({ initial = {}, onSaved }) {
   }, [data.publico_objetivo]);
 
 
+  const handleTypeChange = (e) => {
+    const newType = e.target.value;
+    let updates = { tipo: newType };
+
+    if (newType === 'Webinar' || newType === 'Congreso') {
+      updates.nota_aprobacion = 0; // No approval grade usually
+      updates.requiere_asistencia = true; // Usually attendance is key
+      updates.min_asistencia = 100; // Usually full attendance expected for cert
+    } else if (newType === 'Curso') {
+      updates.nota_aprobacion = 7; // Standard
+      updates.requiere_asistencia = true;
+      updates.min_asistencia = 75; // Standard
+    }
+
+    setData(prev => ({ ...prev, ...updates }));
+  };
+
   const validate = () => {
     const e = {};
     if (!isTenDigits(data.cedula_responsable)) e.cedula_responsable = 'Cédula encargado: exactamente 10 dígitos';
@@ -141,7 +159,16 @@ export default function FormCurso({ initial = {}, onSaved }) {
     // In Shell Mode, only Name and Encargado are required.
     if (!isShellMode) {
       if (data.horas !== '' && (!Number.isInteger(Number(data.horas)) || Number(data.horas) <= 0)) e.horas = 'Horas entero positivo';
-      if (data.nota_aprobacion < 0 || data.nota_aprobacion > 10) e.nota_aprobacion = 'Nota entre 0 y 10';
+
+      // Validation Logic: For Webinar/Congreso, grade requirements might be lax
+      if (data.tipo === 'Curso') {
+        if (data.nota_aprobacion < 0 || data.nota_aprobacion > 10) e.nota_aprobacion = 'Nota entre 0 y 10';
+      }
+
+      if (data.requiere_asistencia) {
+        if (data.min_asistencia < 0 || data.min_asistencia > 100) e.min_asistencia = 'Mínimo entre 0 y 100';
+      }
+
       if (data.fecha_inicio && data.fecha_fin && new Date(data.fecha_inicio) > new Date(data.fecha_fin)) e.fecha_fin = 'Fin debe ser mayor o igual a inicio';
       if (data.fecha_inicio_inscripcion && data.fecha_fin_inscripcion && new Date(data.fecha_inicio_inscripcion) > new Date(data.fecha_fin_inscripcion)) e.fecha_fin_inscripcion = 'Fin insc. debe ser mayor o igual a inicio';
       if (data.es_pagado && (data.costo === '' || Number(data.costo) < 0)) e.costo = 'Costo válido requerido';
@@ -166,6 +193,7 @@ export default function FormCurso({ initial = {}, onSaved }) {
         costo: data.es_pagado ? Number(data.costo || 0) : 0,
         nota_aprobacion: Number(data.nota_aprobacion),
         requiere_asistencia: Boolean(data.requiere_asistencia),
+        min_asistencia: data.requiere_asistencia ? Number(data.min_asistencia) : null,
         es_pagado: Boolean(data.es_pagado),
         fecha_inicio: toDateInputValue(data.fecha_inicio),
         fecha_fin: toDateInputValue(data.fecha_fin),
@@ -279,12 +307,13 @@ export default function FormCurso({ initial = {}, onSaved }) {
               <select
                 className={`${inputClass} ${isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
                 value={data.tipo}
-                onChange={(e) => setData({ ...data, tipo: e.target.value })}
+                onChange={handleTypeChange}
                 disabled={isLocked}
               >
                 <option value="">Selecciona</option>
                 <option value="Curso">Curso</option>
                 <option value="Webinar">Webinar</option>
+                <option value="Congreso">Congreso</option>
                 <option value="Taller">Taller</option>
               </select>
             </div>
@@ -362,6 +391,21 @@ export default function FormCurso({ initial = {}, onSaved }) {
                 <option value="false">No</option>
               </select>
             </div>
+            {data.requiere_asistencia && (
+              <div>
+                <label className={labelClass}>Asistencia Mínima (%)</label>
+                <input
+                  className={`${inputClass} ${isLocked ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={data.min_asistencia}
+                  onChange={(e) => setData({ ...data, min_asistencia: e.target.value })}
+                  disabled={isLocked}
+                />
+                {errors.min_asistencia && <p className="text-xs text-red-600 mt-1">{errors.min_asistencia}</p>}
+              </div>
+            )}
           </div>
 
           {/* Pago */}
@@ -451,7 +495,7 @@ export default function FormCurso({ initial = {}, onSaved }) {
         <button type="button" className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition" onClick={() => navigate(-1)}>
           Cancelar
         </button>
-        {(!isLocked || initial.estado === 'inactivo' || user?.rol === 'admin') && (
+        {(!isLocked || initial.estado === 'inactivo' || user?.rol === 'admin' || initial.estado === 'creado') && (
           <button type="submit" disabled={busy} className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition disabled:opacity-60">
             {busy ? 'Guardando...' : 'Guardar'}
           </button>

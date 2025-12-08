@@ -200,7 +200,8 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
                   </div>
 
                   <div className="pt-4 border-t border-gray-100 flex gap-2 flex-wrap">
-                    {!isFinalized && (
+                    {/* Restriction: Responsable CANNOT Edit Active Courses */}
+                    {(!(!showInactive && user?.rol === 'responsable')) && !isFinalized && (
                       <button onClick={() => onEdit(r)} className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition flex items-center justify-center gap-2 ${showInactive ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' : 'bg-blue-50 text-blue-700 hover:bg-blue-100'}`}>
                         <HiOutlinePencil className="w-4 h-4" />
                         {showInactive ? 'Completar Info' : 'Editar'}
@@ -214,7 +215,13 @@ export default function TablaCursos({ onEdit, showInactive = false }) {
                     ) : (
                       <div className="flex items-center gap-2 justify-center py-2 px-3">
                         <span className="text-sm font-medium text-gray-600">Estado:</span>
-                        <Switch checked={true} onChange={() => confirmDelete(r.id_curso)} color="green" />
+                        {/* Restriction: Responsable CANNOT Deactivate Active Courses */}
+                        <Switch
+                          checked={true}
+                          onChange={() => confirmDelete(r.id_curso)}
+                          color="green"
+                          disabled={user?.rol === 'responsable'}
+                        />
                       </div>
                     )}
                     {!showInactive && !isFinalized && (

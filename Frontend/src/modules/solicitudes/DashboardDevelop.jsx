@@ -2,24 +2,37 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { API } from '../../services/api';
-import { HiOutlineClipboardList, HiOutlineClock, HiOutlineCheckCircle, HiOutlineDocumentText, HiOutlineExclamation } from 'react-icons/hi';
+import { useAuth } from '../../context/AuthContext';
+import { HiOutlineClipboardList, HiOutlineClock, HiOutlineCheckCircle, HiOutlineDocumentText, HiOutlineExclamation, HiOutlineX } from 'react-icons/hi';
 
 export default function DashboardDevelop() {
+  const { user } = useAuth();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [recent, setRecent] = useState([]);
+  const [assigned, setAssigned] = useState([]);
   const [error, setError] = useState('');
+  const [selectedSolicitud, setSelectedSolicitud] = useState(null);
 
   useEffect(() => {
     loadStats();
-  }, []);
+  }, [user]);
 
   const loadStats = async () => {
     try {
-      const [s, list] = await Promise.all([API.getSolicitudesStats(), API.listSolicitudes()]);
+      const promises = [API.getSolicitudesStats(), API.listSolicitudes()];
+      if (user?.cedula) {
+        promises.push(API.listSolicitudes({ asignado_a: user.cedula }));
+      }
+
+      const [s, list, misAsignadas] = await Promise.all(promises);
+
       setStats(s);
-      // take the 5 most recent (backend orders by fecha_solicitud desc)
+      // take the 5 most recent
       setRecent((list || []).slice(0, 5));
+      if (misAsignadas) {
+        setAssigned(misAsignadas);
+      }
     } catch (error) {
       console.error('Error al cargar estadísticas:', error);
       setError(error.message || String(error));
@@ -137,31 +150,50 @@ export default function DashboardDevelop() {
         </div>
       </div>
 
-      {/* Acceso rápido */}
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Acceso Rápido</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Link
-            to="/solicitudes"
-            className="p-4 border-2 border-blue-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition"
-          >
-            <h3 className="font-bold text-blue-700">Gestión Completa</h3>
-            <p className="text-gray-600 text-sm mt-1">Ver panel de aprobación y asignación.</p>
-          </Link>
-          <Link
-            to="/solicitudes?estado=pendiente"
-            className="p-4 border-2 border-yellow-200 rounded-lg hover:border-yellow-500 hover:bg-yellow-50 transition"
-          >
-            <h3 className="font-bold text-yellow-700">Pendientes de Aprobación</h3>
-            <p className="text-gray-600 text-sm mt-1">Revisar solicitudes nuevas para asignar.</p>
-          </Link>
-        </div>
+      {/* Mis Asignaciones */}
+      <div className="bg-white p-6 rounded-lg shadow border-l-4 border-purple-500">
+        <h2 className="text-xl font-bold text-gray-800 mb-4">Mis Asignaciones</h2>
+        {assigned.length === 0 ? (
+          <p className="text-gray-500">No tienes solicitudes asignadas.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Descripción</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Prioridad</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Estado</th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {assigned.map((r) => (
+                  <tr key={r.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-2 text-sm font-medium text-gray-900">{r.id}</td>
+                    <td className="px-4 py-2 text-sm text-gray-700 truncate max-w-xs">{r.descripcion}</td>
+                    <td className="px-4 py-2 text-sm text-gray-700 capitalize">{r.prioridad}</td>
+                    <td className="px-4 py-2 text-sm text-gray-700 capitalize">{r.estado}</td>
+                    <td className="px-4 py-2 text-sm text-blue-600">
+                      <button
+                        onClick={() => setSelectedSolicitud(r)}
+                        className="text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        Ver Detalle
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Últimas solicitudes */}
       <div className="bg-white p-6 rounded-lg shadow">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-800">Últimas Solicitudes</h2>
+          <h2 className="text-xl font-bold text-gray-800">Últimas Solicitudes (General)</h2>
           <Link to="/solicitudes" className="text-sm text-blue-600 hover:underline">Ver todas</Link>
         </div>
 
@@ -191,7 +223,12 @@ export default function DashboardDevelop() {
                     <td className="px-4 py-2 text-sm text-gray-700 capitalize">{r.estado}</td>
                     <td className="px-4 py-2 text-sm text-gray-700">{r.fecha_solicitud ? new Date(r.fecha_solicitud).toLocaleDateString() : '-'}</td>
                     <td className="px-4 py-2 text-sm text-blue-600">
-                      <Link to={`/solicitudes/${r.id}/editar`} className="hover:underline">Editar</Link>
+                      <button
+                        onClick={() => setSelectedSolicitud(r)}
+                        className="text-blue-600 hover:text-blue-800 font-medium hover:underline"
+                      >
+                        Ver Detalle
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -200,6 +237,95 @@ export default function DashboardDevelop() {
           </div>
         )}
       </div>
+
+      {/* Modal de Detalles */}
+      {selectedSolicitud && (
+        <div className="fixed inset-0 bg-gray-900/30 backdrop-blur-sm flex items-center justify-center z-50 p-4 transition-all" style={{ animation: 'fadeIn 0.2s ease-out' }}>
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto transform transition-all scale-100" style={{ animation: 'scaleIn 0.2s ease-out' }}>
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-4">
+                <h3 className="text-2xl font-bold text-gray-800">
+                  Solicitud #{selectedSolicitud.id}
+                </h3>
+                <button
+                  onClick={() => setSelectedSolicitud(null)}
+                  className="text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <HiOutlineX className="text-xl" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-bold text-gray-500 block">Solicitante</label>
+                    <p>{selectedSolicitud.nombre_solicitante} {selectedSolicitud.apellido_solicitante}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-bold text-gray-500 block">Fecha</label>
+                    <p>{selectedSolicitud.fecha_solicitud ? new Date(selectedSolicitud.fecha_solicitud).toLocaleDateString() : '-'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-bold text-gray-500 block">Prioridad</label>
+                    <span className={`px-2 py-1 rounded text-xs font-semibold ${selectedSolicitud.prioridad === 'alta' ? 'bg-red-100 text-red-800' :
+                      selectedSolicitud.prioridad === 'media' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-green-100 text-green-800'
+                      }`}>
+                      {selectedSolicitud.prioridad?.toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <label className="text-sm font-bold text-gray-500 block">Estado</label>
+                    <span className="px-2 py-1 rounded text-xs font-semibold bg-blue-100 text-blue-800">
+                      {selectedSolicitud.estado?.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+
+                <hr />
+
+                <div>
+                  <label className="text-sm font-bold text-gray-500 block">Descripción</label>
+                  <p className="bg-gray-50 p-3 rounded mt-1">{selectedSolicitud.descripcion}</p>
+                </div>
+
+                <div>
+                  <label className="text-sm font-bold text-gray-500 block">Razón / Justificación</label>
+                  <p className="bg-gray-50 p-3 rounded mt-1">{selectedSolicitud.razon}</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-bold text-gray-500 block">Contacto</label>
+                    <p>{selectedSolicitud.contacto}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-bold text-gray-500 block">Tipo Formulario</label>
+                    <p className="capitalize">{selectedSolicitud.tipo_formulario}</p>
+                  </div>
+                </div>
+
+                {selectedSolicitud.tipo_formulario === 'experto' && (
+                  <div className="bg-gray-50 p-3 rounded mt-2 text-sm">
+                    <p><strong>Categoría:</strong> {selectedSolicitud.categoria || '-'}</p>
+                    <p><strong>Impacto:</strong> {selectedSolicitud.impacto || '-'}</p>
+                    <p><strong>Entornos:</strong> {selectedSolicitud.entornos || '-'}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-8 flex justify-end">
+                <button
+                  onClick={() => setSelectedSolicitud(null)}
+                  className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition font-medium"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

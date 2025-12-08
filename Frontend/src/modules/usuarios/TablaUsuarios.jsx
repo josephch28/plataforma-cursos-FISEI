@@ -1,18 +1,17 @@
 // Frontend/src/modules/usuarios/TablaUsuarios.jsx
-import { useEffect, useState } from 'react'; 
+import { useEffect, useState } from 'react';
 import { API } from '../../services/api';
+import Switch from '../../components/Switch';
+import { HiOutlinePencil } from 'react-icons/hi';
 
-// Props: onEdit, showInactive, onAction
-export default function TablaUsuarios({ onEdit, showInactive = false, onAction }) { // <-- SIN auth
+export default function TablaUsuarios({ onEdit, showInactive = false, onAction }) {
     const [rows, setRows] = useState([]);
     const [q, setQ] = useState('');
     const [loading, setLoading] = useState(false);
 
-    // Función de carga. Usada internamente y pasada al padre para recargar post-acción.
     const load = async () => {
         setLoading(true);
         try {
-            // Llama a la API con el filtro inactivo: 'true' o 'false'
             const data = await API.listUsuarios({ inactivo: showInactive });
             setRows(data);
         } catch (e) {
@@ -22,12 +21,10 @@ export default function TablaUsuarios({ onEdit, showInactive = false, onAction }
         }
     };
 
-    // Recarga la lista cada vez que se cambia de pestaña (showInactive)
     useEffect(() => {
         load();
-    }, [showInactive]); 
+    }, [showInactive]);
 
-    // Filtro simple en el frontend basado en la búsqueda 'q'
     const filteredRows = rows.filter(row =>
         row.cedula?.includes(q) ||
         row.nombre?.toLowerCase().includes(q.toLowerCase()) ||
@@ -35,18 +32,16 @@ export default function TablaUsuarios({ onEdit, showInactive = false, onAction }
         row.email?.toLowerCase().includes(q.toLowerCase())
     );
 
-    // Pasa la acción al componente padre (UsuariosListPage) con el callback de recarga
     const handleDesactivate = (cedula) => {
-        onAction(cedula, 'delete', load); // Pasa 'load' como callback
+        onAction(cedula, 'delete', load);
     };
 
     const handleActivate = (cedula) => {
-        onAction(cedula, 'activate', load); // Pasa 'load' como callback
+        onAction(cedula, 'activate', load);
     };
 
     return (
         <div>
-            {/* BARRA DE BÚSQUEDA - ÚNICA (Soluciona la duplicación) */}
             <div className="p-4 border-b border-gray-200">
                 <input
                     value={q}
@@ -64,6 +59,7 @@ export default function TablaUsuarios({ onEdit, showInactive = false, onAction }
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nombre Completo</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
                             <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rol</th>
+                            <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Activo</th>
                             <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Acciones</th>
                         </tr>
                     </thead>
@@ -74,6 +70,17 @@ export default function TablaUsuarios({ onEdit, showInactive = false, onAction }
                                 <td className="px-6 py-4 text-sm text-gray-900">{r.nombre} {r.apellido}</td>
                                 <td className="px-6 py-4 text-sm text-gray-500">{r.email}</td>
                                 <td className="px-6 py-4 text-sm text-gray-500 capitalize">{r.rol}</td>
+                                <td className="px-6 py-4 text-center">
+                                    {!showInactive ? (
+                                        <div title="Desactivar Usuario" className="inline-block">
+                                            <Switch checked={true} onChange={() => handleDesactivate(r.cedula)} color="green" />
+                                        </div>
+                                    ) : (
+                                        <div title="Activar Usuario" className="inline-block">
+                                            <Switch checked={false} onChange={() => handleActivate(r.cedula)} color="green" />
+                                        </div>
+                                    )}
+                                </td>
                                 <td className="px-6 py-4 text-right">
                                     <div className="flex justify-end gap-2">
                                         <button
@@ -81,36 +88,8 @@ export default function TablaUsuarios({ onEdit, showInactive = false, onAction }
                                             title="Editar"
                                             className="p-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition"
                                         >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                            </svg>
+                                            <HiOutlinePencil className="w-4 h-4" />
                                         </button>
-
-                                        {/* Botón para Desactivar (solo en pestaña Activos) */}
-                                        {!showInactive && (
-                                            <button
-                                                onClick={() => handleDesactivate(r.cedula)}
-                                                title="Desactivar"
-                                                className="p-2 rounded bg-red-600 text-white hover:bg-red-700 transition"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                </svg>
-                                            </button>
-                                        )}
-
-                                        {/* Botón para Activar (solo en pestaña Desactivados) */}
-                                        {showInactive && (
-                                            <button
-                                                onClick={() => handleActivate(r.cedula)}
-                                                title="Activar"
-                                                className="p-2 rounded bg-green-600 text-white hover:bg-green-700 transition"
-                                            >
-                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                                </svg>
-                                            </button>
-                                        )}
                                     </div>
                                 </td>
                             </tr>

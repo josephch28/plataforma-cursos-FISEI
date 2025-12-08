@@ -336,6 +336,25 @@
     <div id="canvas-panel" class="hidden"></div>
     <div id="details-view" class="hidden"></div>
   </main>
+  <!-- Modal de Confirmación -->
+  <div id="modal-confirmacion"
+    style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(30, 41, 59, 0.4); backdrop-filter: blur(4px); justify-content: center; align-items: center;">
+    <div
+      style="background-color: #fefefe; margin: auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 400px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); text-align: center;">
+      <div style="color: #28a745; margin-bottom: 15px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+      </div>
+      <h3 style="color: #253b58; margin-bottom: 10px;">Solicitud Enviada</h3>
+      <p style="color: #555; margin-bottom: 20px;">La solicitud ha sido registrada correctamente.</p>
+      <button id="btn-cerrar-modal"
+        style="background: linear-gradient(92deg, #2274e1 70%, #3ca1ee 100%); color: white; border: none; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; font-size: 16px; border-radius: 5px; cursor: pointer;">Aceptar</button>
+    </div>
+  </div>
+
   <script>
     let modo = "usuario";
     const usuarioBtn = document.getElementById('usuarioBtn');
@@ -345,6 +364,21 @@
     const canvasPanel = document.getElementById('canvas-panel');
     const verCanvasBtn = document.getElementById('verCanvas');
     const detailsView = document.getElementById('details-view');
+
+    // Modal elements
+    const modal = document.getElementById('modal-confirmacion');
+    const btnCerrarModal = document.getElementById('btn-cerrar-modal');
+
+    btnCerrarModal.onclick = function () {
+      modal.style.display = "none";
+    }
+
+    window.onclick = function (event) {
+      if (event.target == modal) {
+        modal.style.display = "none";
+      }
+    }
+
     let solicitudes = [];
 
     function switchForm(tipo) {
@@ -389,9 +423,11 @@
         });
         if (!res.ok) throw new Error('Error al guardar');
         const saved = await res.json();
-        alert("Solicitud guardada en Base de Datos y GitHub.");
+
+        // Show modal instead of alert
+        modal.style.display = "flex";
+
         formUsuario.reset();
-        // Recargar o limpiar
       } catch (err) {
         console.error(err);
         alert("Error al guardar solicitud: " + err.message);
@@ -424,7 +460,10 @@
         });
         if (!res.ok) throw new Error('Error al guardar');
         const saved = await res.json();
-        alert("Solicitud DETALLADA guardada en Base de Datos y GitHub.");
+
+        // Show modal instead of alert
+        modal.style.display = "flex";
+
         formExperto.reset();
       } catch (err) {
         console.error(err);

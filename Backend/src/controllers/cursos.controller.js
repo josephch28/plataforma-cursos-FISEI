@@ -3,15 +3,21 @@ const pool = require('../db');
 
 exports.list = async (req, res) => {
   try {
-    const { q, tipo, pag = 1, size = 10, inactivo, horas_min, horas_max, publico_objetivo, costo_min, costo_max } = req.query;
+    const { q, tipo, pag = 1, size = 10, inactivo, estado, horas_min, horas_max, publico_objetivo, costo_min, costo_max } = req.query;
 
     const offset = (parseInt(pag) - 1) * parseInt(size);
     const filters = [];
     const params = [];
     const pubs = (publico_objetivo || '').split(',').map(s => s.trim()).filter(Boolean);
 
+    // Support 'all' to ignore active/inactive filter
     if (inactivo === 'true') filters.push('c.activo = FALSE');
-    else filters.push('c.activo = TRUE');
+    else if (inactivo !== 'all') filters.push('c.activo = TRUE');
+
+    if (estado) {
+      filters.push('c.estado = ?');
+      params.push(estado);
+    }
 
     if (q) {
       filters.push('(c.nombre LIKE ? OR c.descripcion LIKE ?)');
@@ -103,8 +109,8 @@ exports.create = async (req, res) => {
     // 4) INSERT usando cedulaAdmin del token
     const [result] = await pool.query(
       `INSERT INTO curso
-       (cedula_admin, cedula_responsable, cedula_docente, nombre, descripcion, tipo, horas, es_pagado, costo, prerequisito, publico_objetivo, nota_aprobacion, requiere_asistencia, fecha_inicio, fecha_fin, fecha_inicio_inscripcion, fecha_fin_inscripcion, activo)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,FALSE)`,
+       (cedula_admin, cedula_responsable, cedula_docente, nombre, descripcion, tipo, horas, es_pagado, costo, prerequisito, publico_objetivo, nota_aprobacion, requiere_asistencia, min_asistencia, fecha_inicio, fecha_fin, fecha_inicio_inscripcion, fecha_fin_inscripcion, activo, estado)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,FALSE, 'creado')`,
       [
         cedulaAdmin,
         b.cedula_responsable,
@@ -119,6 +125,7 @@ exports.create = async (req, res) => {
         publicoCSV ?? null,
         b.nota_aprobacion ?? 7.0,
         b.requiere_asistencia ?? true,
+        b.min_asistencia ?? 75,
         b.fecha_inicio || null,
         b.fecha_fin || null,
         b.fecha_inicio_inscripcion || null,
@@ -177,7 +184,8 @@ exports.update = async (req, res) => {
     const params = [];
     const allowed = [
       'cedula_responsable', 'cedula_docente', 'nombre', 'descripcion', 'tipo', 'horas', 'es_pagado', 'costo',
-      'prerequisito', 'publico_objetivo', 'nota_aprobacion', 'requiere_asistencia', 'fecha_inicio', 'fecha_fin',
+      'cedula_responsable', 'cedula_docente', 'nombre', 'descripcion', 'tipo', 'horas', 'es_pagado', 'costo',
+      'prerequisito', 'publico_objetivo', 'nota_aprobacion', 'requiere_asistencia', 'min_asistencia', 'fecha_inicio', 'fecha_fin',
       'fecha_inicio_inscripcion', 'fecha_fin_inscripcion'
     ];
 
@@ -203,7 +211,7 @@ exports.update = async (req, res) => {
 
 exports.remove = async (req, res) => {
   try {
-    await pool.query('UPDATE curso SET activo = FALSE WHERE id_curso = ?', [req.params.id]);
+    await pool.query('UPDATE curso SET activo = FALSE, estado = "creado" WHERE id_curso = ?', [req.params.id]);
     res.status(204).send();
   } catch (error) {
     console.error('REMOVE error:', error);
@@ -269,7 +277,7 @@ exports.finalize = async (req, res) => {
         JOIN usuario u ON i.cedula_estudiante = u.cedula
         WHERE i.id_curso = ? 
           AND i.estado = 'aprobado'
-          AND NOT EXISTS (SELECT 1 FROM certificados c WHERE c.id_inscripcion = i.id_inscripcion)
+          AND NOT EXISTS (SELECT 1 FROM certificado c WHERE c.id_inscripcion = i.id_inscripcion)
     `, [req.params.id]);
 
     // 4. Generar registros de Certificados
@@ -277,7 +285,7 @@ exports.finalize = async (req, res) => {
     for (const insc of inscripciones) {
       const code = uuidv4();
       await pool.query(
-        'INSERT INTO certificados (id_inscripcion, codigo_verificacion) VALUES (?, ?)',
+        'INSERT INTO certificado (id_inscripcion, codigo_verificacion) VALUES (?, ?)',
         [insc.id_inscripcion, code]
       );
       generated++;

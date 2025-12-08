@@ -3,6 +3,7 @@ import { API } from '../../services/api';
 import { useNavigate } from 'react-router-dom';
 import TablaEvaluaciones from './TablaEvaluaciones';
 import { useAuth } from '../../context/AuthContext';
+import { HiOutlineSearch, HiOutlineDocumentReport, HiOutlineTrash, HiOutlineExclamation, HiOutlinePlus } from 'react-icons/hi';
 
 export default function EvaluacionesListPage() {
   const [rows, setRows] = useState([]);
@@ -13,7 +14,6 @@ export default function EvaluacionesListPage() {
   const nav = useNavigate();
   const { user } = useAuth();
 
-  // NUEVO: estados para el modal de confirmación
   const [showConfirm, setShowConfirm] = useState(false);
   const [toDeleteId, setToDeleteId] = useState(null);
 
@@ -37,13 +37,11 @@ export default function EvaluacionesListPage() {
 
   const handleEdit = (row) => nav(`/evaluaciones/${row.id_inscripcion}/editar`);
 
-  // MODIFICADO: ahora solo muestra el modal
   const handleDelete = (id) => {
     setToDeleteId(id);
     setShowConfirm(true);
   };
 
-  // NUEVO: función para confirmar borrado
   const confirmDelete = async () => {
     setShowConfirm(false);
     if (toDeleteId) {
@@ -56,28 +54,43 @@ export default function EvaluacionesListPage() {
   };
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-semibold text-gray-900">Evaluaciones</h1>
+    <div className="max-w-7xl mx-auto pb-12">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl font-extrabold text-gray-900 tracking-tight flex items-center gap-2">
+            <HiOutlineDocumentReport className="text-blue-600 hidden md:block" />
+            Evaluaciones
+          </h1>
+          <p className="text-gray-500 mt-1">
+            Gestiona las evaluaciones y calificaciones de los estudiantes inscritos.
+          </p>
+        </div>
         {user?.rol === 'admin' && (
           <button
             onClick={() => nav('/evaluaciones/nueva')}
-            className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 transition"
+            className="inline-flex items-center justify-center px-5 py-2.5 border border-transparent text-sm font-medium rounded-xl shadow-lg text-white bg-blue-600 hover:bg-blue-700 hover:shadow-blue-600/30 transition-all transform hover:-translate-y-0.5"
           >
+            <HiOutlinePlus className="w-5 h-5 mr-2" />
             Nueva evaluación
           </button>
         )}
       </div>
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
         {/* Barra de búsqueda */}
-        <div className="p-4 border-b border-gray-200">
-          <input
-            value={q}
-            onChange={e => setQ(e.target.value)}
-            placeholder="Buscar evaluación o curso..."
-            className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
+        <div className="p-5 border-b border-gray-100 bg-gray-50/50">
+          <div className="relative max-w-md">
+            <HiOutlineSearch className="absolute left-3 top-3 text-gray-400 w-5 h-5" />
+            <input
+              value={q}
+              onChange={e => setQ(e.target.value)}
+              placeholder="Buscar por cédula o ID curso..."
+              className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all"
+            />
+          </div>
         </div>
+
         {/* Tabla */}
         <TablaEvaluaciones
           rows={pagRows}
@@ -85,58 +98,70 @@ export default function EvaluacionesListPage() {
           onEdit={handleEdit}
           onDelete={user?.rol === 'admin' ? handleDelete : undefined}
         />
+
         {/* Paginación */}
-        <div className="px-4 py-4 flex items-center justify-between border-t border-gray-200">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">Tamaño:</span>
+        <div className="px-6 py-4 flex items-center justify-between border-t border-gray-200 bg-gray-50">
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-600 font-medium">Filas por página:</span>
             <select
               value={size}
               onChange={e => { setSize(Number(e.target.value)); setPag(1); }}
-              className="rounded border border-gray-300 px-2 py-1 text-sm"
+              className="rounded-lg border-gray-300 py-1.5 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm"
             >
               {[5, 10, 20, 50].map(n => (
                 <option key={n} value={n}>{n}</option>
               ))}
             </select>
           </div>
-          <div className="flex items-center gap-3">
+
+          <div className="flex items-center gap-2">
             <button
               disabled={pag === 1}
               onClick={() => setPag(pag - 1)}
-              className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition"
+              className="px-4 py-2 rounded-lg border border-gray-300 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
             >
               Anterior
             </button>
-            <span className="text-sm text-gray-600">Página {pag}</span>
+            <span className="text-sm font-medium text-gray-700 min-w-[3rem] text-center">
+              {pag} / {lastPage}
+            </span>
             <button
               disabled={pag === lastPage}
               onClick={() => setPag(pag + 1)}
-              className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 transition"
+              className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-sm"
             >
               Siguiente
             </button>
           </div>
         </div>
       </div>
+
       {/* MODAL de confirmación */}
       {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center min-h-screen bg-black/20 overflow-y-auto">
-          <div className="bg-white p-6 rounded-lg shadow-lg max-w-sm w-full mx-auto">
-            <h2 className="text-lg font-semibold mb-4">¿Eliminar evaluación?</h2>
-            <p className="mb-6 text-gray-700">Esta acción no se puede deshacer.</p>
-            <div className="flex gap-4">
-              <button
-                className="px-4 py-2 rounded bg-red-600 text-white"
-                onClick={confirmDelete}
-              >
-                Eliminar
-              </button>
-              <button
-                className="px-4 py-2 rounded bg-gray-200"
-                onClick={() => setShowConfirm(false)}
-              >
-                Cancelar
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-sm w-full mx-auto overflow-hidden animate-fade-in-up">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <HiOutlineTrash className="w-8 h-8" />
+              </div>
+              <h2 className="text-xl font-bold text-gray-900 mb-2">¿Eliminar evaluación?</h2>
+              <p className="text-gray-500 mb-6">
+                Esta acción eliminará el registro permanentemente. No se puede deshacer.
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  className="px-5 py-2.5 rounded-xl border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 transition-colors w-full"
+                  onClick={() => setShowConfirm(false)}
+                >
+                  Cancelar
+                </button>
+                <button
+                  className="px-5 py-2.5 rounded-xl bg-red-600 text-white font-bold hover:bg-red-700 shadow-lg shadow-red-600/30 transition-colors w-full"
+                  onClick={confirmDelete}
+                >
+                  Sí, eliminar
+                </button>
+              </div>
             </div>
           </div>
         </div>

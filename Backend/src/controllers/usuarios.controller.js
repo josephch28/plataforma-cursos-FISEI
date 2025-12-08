@@ -195,13 +195,15 @@ exports.getUserCourses = async (req, res) => {
                 c.id_curso,
                 c.nombre AS curso_nombre,
                 c.activo,
+                c.estado AS curso_estado,
+                c.fecha_inicio,
                 'responsable' AS rol
             FROM curso c
             WHERE c.cedula_responsable = ?
         `, [cedula]);
     // Query 3: Cursos donde el usuario es el docente principal 🆕
     const [docentePrincipalCourses] = await pool.query(`
-          SELECT c.id_curso, c.nombre AS curso_nombre, c.activo, 'docente_principal' AS rol
+          SELECT c.id_curso, c.nombre AS curso_nombre, c.activo, c.estado AS curso_estado, c.fecha_inicio, 'docente_principal' AS rol
           FROM curso c
           WHERE c.cedula_docente = ?
       `, [cedula]);
@@ -212,6 +214,8 @@ exports.getUserCourses = async (req, res) => {
                 c.id_curso,
                 c.nombre AS curso_nombre,
                 c.activo,
+                c.estado AS curso_estado,
+                c.fecha_inicio,
                 'encargado' AS rol
             FROM curso c
             JOIN curso_encargado ce ON c.id_curso = ce.id_curso

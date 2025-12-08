@@ -3,15 +3,21 @@ const pool = require('../db');
 
 exports.list = async (req, res) => {
   try {
-    const { q, tipo, pag = 1, size = 10, inactivo, horas_min, horas_max, publico_objetivo, costo_min, costo_max } = req.query;
+    const { q, tipo, pag = 1, size = 10, inactivo, estado, horas_min, horas_max, publico_objetivo, costo_min, costo_max } = req.query;
 
     const offset = (parseInt(pag) - 1) * parseInt(size);
     const filters = [];
     const params = [];
     const pubs = (publico_objetivo || '').split(',').map(s => s.trim()).filter(Boolean);
 
+    // Support 'all' to ignore active/inactive filter
     if (inactivo === 'true') filters.push('c.activo = FALSE');
-    else filters.push('c.activo = TRUE');
+    else if (inactivo !== 'all') filters.push('c.activo = TRUE');
+
+    if (estado) {
+      filters.push('c.estado = ?');
+      params.push(estado);
+    }
 
     if (q) {
       filters.push('(c.nombre LIKE ? OR c.descripcion LIKE ?)');
@@ -104,7 +110,7 @@ exports.create = async (req, res) => {
     const [result] = await pool.query(
       `INSERT INTO curso
        (cedula_admin, cedula_responsable, cedula_docente, nombre, descripcion, tipo, horas, es_pagado, costo, prerequisito, publico_objetivo, nota_aprobacion, requiere_asistencia, min_asistencia, fecha_inicio, fecha_fin, fecha_inicio_inscripcion, fecha_fin_inscripcion, activo, estado)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,FALSE, 'creado')`,
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,FALSE, 'creado')`,
       [
         cedulaAdmin,
         b.cedula_responsable,
@@ -117,7 +123,6 @@ exports.create = async (req, res) => {
         b.costo ?? 0,
         b.prerequisito ?? null,
         publicoCSV ?? null,
-        b.nota_aprobacion ?? 7.0,
         b.nota_aprobacion ?? 7.0,
         b.requiere_asistencia ?? true,
         b.min_asistencia ?? 75,

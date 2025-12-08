@@ -47,10 +47,27 @@ export default function SolicitudesListPage() {
   // Modal de Ver Detalles (Read-only)
   const [selectedSolicitud, setSelectedSolicitud] = useState(null);
 
+  // Map de Developers para mostrar nombres en la tabla
+  const [devMap, setDevMap] = useState({});
+
   // Cargar datos
   useEffect(() => {
     loadSolicitudes();
+    loadDevsForMap();
   }, [filters, activeTab, user]);
+
+  const loadDevsForMap = async () => {
+    try {
+      const devs = await API.listDevelopers(); // Asumiendo que esto trae todos los devs
+      const map = {};
+      devs.forEach(d => {
+        map[d.cedula] = `${d.nombre} ${d.apellido}`;
+      });
+      setDevMap(map);
+    } catch (e) {
+      console.error('Error loading devs map', e);
+    }
+  };
 
   const loadSolicitudes = async () => {
     try {
@@ -234,6 +251,8 @@ export default function SolicitudesListPage() {
     return styles[estado] || 'bg-gray-50 text-gray-700 border-gray-200';
   };
 
+  const shouldShowDevColumn = user?.rol === 'comite' && ['aprobadas', 'realizadas', 'todas'].includes(activeTab);
+
   return (
     <div className="space-y-8">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -407,6 +426,9 @@ export default function SolicitudesListPage() {
                   <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Solicitante</th>
                   <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Prioridad</th>
                   <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
+                  {shouldShowDevColumn && (
+                    <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Desarrollador Asignado</th>
+                  )}
                   <th scope="col" className="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Descripción</th>
                   <th scope="col" className="px-6 py-4 text-right text-xs font-semibold text-gray-500 uppercase tracking-wider">Acciones</th>
                 </tr>
@@ -429,6 +451,11 @@ export default function SolicitudesListPage() {
                         {sol.estado}
                       </span>
                     </td>
+                    {shouldShowDevColumn && (
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                        {devMap[sol.asignado_a] || sol.asignado_a || '-'}
+                      </td>
+                    )}
                     <td className="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" title={sol.descripcion}>
                       {sol.descripcion}
                     </td>
@@ -492,7 +519,7 @@ export default function SolicitudesListPage() {
               >
                 <option value="">Seleccione un desarrollador...</option>
                 {developers.map(d => (
-                  <option key={d.cedula} value={d.id || d.cedula}>
+                  <option key={d.cedula} value={d.cedula}>
                     {d.nombre} {d.apellido}
                   </option>
                 ))}

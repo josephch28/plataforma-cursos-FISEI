@@ -45,17 +45,17 @@ export default function CursosListPage() {
               }`}
           >
             <span className={`w-2 h-2 rounded-full mr-2 ${tab === 'activos' ? 'bg-blue-600' : 'bg-transparent group-hover:bg-gray-300'}`}></span>
-            Cursos Activos
+            Activos/Todos
           </button>
           <button
-            onClick={() => setTab('desactivados')}
-            className={`group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors ${tab === 'desactivados'
+            onClick={() => setTab('archivados')}
+            className={`group inline-flex items-center py-4 px-1 border-b-2 font-medium text-sm transition-colors ${tab === 'archivados'
               ? 'border-blue-600 text-blue-600'
               : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
           >
-            <span className={`w-2 h-2 rounded-full mr-2 ${tab === 'desactivados' ? 'bg-blue-600' : 'bg-transparent group-hover:bg-gray-300'}`}></span>
-            Archivados / Desactivados
+            <span className={`w-2 h-2 rounded-full mr-2 ${tab === 'archivados' ? 'bg-blue-600' : 'bg-transparent group-hover:bg-gray-300'}`}></span>
+            Archivados
           </button>
         </nav>
       </div>
@@ -65,7 +65,7 @@ export default function CursosListPage() {
         <TablaCursos
           onEdit={(r) => nav(`/cursos/${r.id_curso}/editar`)}
           onManageEnc={() => { }}
-          showInactive={tab === 'desactivados'}
+          activeTab={tab}
         />
       </div>
     </div>

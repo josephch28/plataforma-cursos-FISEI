@@ -74,7 +74,7 @@ export default function CursosCatalogoPage() {
   }, [q, horasFiltro, tipoFiltro, publicoFiltro, user]);
 
   const openModal = (curso) => {
-    if (user.rol !== 'usuario' && user.rol !== 'estudiante') {
+    if (user.rol !== 'usuario') {
       setFeedback({
         type: 'error',
         title: 'Acceso restringido',

@@ -80,10 +80,10 @@ exports.register = async (req, res) => {
     const passwordHash = await bcrypt.hash(password, salt);
 
     // 3. Insertar en BD
-    // CORRECCIÓN: Cambiamos 'estado' por 'activo' y el valor 'activo' por 1
+    // CORRECCIÓN: Usamos 'usuario' (que SÍ está en tu BD) y 'activo' = 1
     const [result] = await pool.query(
       'INSERT INTO usuario (cedula, nombre, apellido, email, password, rol, es_estudiante_uta, es_personal_uta, activo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [cedula, nombre, apellido, email, passwordHash, 'estudiante', es_estudiante_uta ? 1 : 0, es_personal_uta ? 1 : 0, 1]
+      [cedula, nombre, apellido, email, passwordHash, 'usuario', es_estudiante_uta ? 1 : 0, es_personal_uta ? 1 : 0, 1]
     );
 
     res.status(201).json({
@@ -92,7 +92,7 @@ exports.register = async (req, res) => {
       nombre,
       apellido,
       email,
-      rol: 'estudiante',
+      rol: 'usuario', // Respondemos con el rol correcto
       message: 'Usuario registrado exitosamente'
     });
 

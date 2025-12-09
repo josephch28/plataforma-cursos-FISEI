@@ -1,5 +1,7 @@
 // src/App.jsx
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
+
 import CursosListPage from './modules/cursos/CursosListPage';
 import CursosCreatePage from './modules/cursos/CursosCreatePage';
 import CursosEditPage from './modules/cursos/CursosEditPage';
@@ -10,6 +12,9 @@ import UsuariosListPage from './modules/usuarios/UsuariosListPage';
 import UsuariosCreatePage from './modules/usuarios/UsuariosCreatePage';
 import UsuariosEditPage from './modules/usuarios/UsuariosEditPage';
 import LoginPage from './modules/auth/LoginPage';
+import RegisterPage from './modules/auth/RegisterPage';
+import LandingPage from './modules/home/LandingPage';
+
 import AppLayout from './layouts/AppLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import RoleProtectedRoute from './components/RoleProtectedRoute';
@@ -19,23 +24,42 @@ import DashboardPage from './modules/dashboard/DashboardPage';
 import SolicitudesListPage from './modules/solicitudes/SolicitudesListPage';
 import FormSolicitud from './modules/solicitudes/FormSolicitud';
 import DashboardDevelop from './modules/solicitudes/DashboardDevelop';
-import CursosCatalogoPage from './modules/cursos/CursosCatalogoPage'; // 🆕 Importar
+import CursosCatalogoPage from './modules/cursos/CursosCatalogoPage';
 import PagoSubirPage from './modules/pagos/PagoSubirPage';
 import AprobacionPagosPage from './modules/pagos/AprobacionPagosPage';
 import MisCursosPage from './modules/misCursos/MisCursosPage';
 import PerfilPage from './modules/usuarios/PerfilPage';
 import ValidarDocumentosPage from './modules/documentos/ValidarDocumentosPage';
 
-export default function App() {
-  // const auth = { rol: 'admin', cedula: '0101010101' }; // <-- ¡ELIMINADO! Ya no necesitamos esto.
+// Componente inteligente:
+// - Si NO hay usuario: Muestra la página pública (Landing/Login/Register)
+// - Si HAY usuario: Lo redirige automáticamente a su panel (Dashboard/Cursos)
+const PublicRoute = ({ children }) => {
+  const { user } = useAuth();
+  if (user) return <RoleBasedRedirect />;
+  return children;
+};
 
+export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
+        {/* --- RUTAS PÚBLICAS --- */}
+        <Route path="/" element={
+          <PublicRoute><LandingPage /></PublicRoute>
+        } />
+
+        <Route path="/login" element={
+          <PublicRoute><LoginPage /></PublicRoute>
+        } />
+
+        <Route path="/register" element={
+          <PublicRoute><RegisterPage /></PublicRoute>
+        } />
+
+        {/* --- RUTAS PROTEGIDAS --- */}
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
-            <Route path="/" element={<RoleBasedRedirect />} />
 
             {/* Rutas públicas (requieren autenticación pero no rol específico) */}
             <Route path="/pago/:idInscripcion/subir" element={<PagoSubirPage />} />
@@ -79,7 +103,8 @@ export default function App() {
             </Route>
 
             {/* Rutas para Usuario y Responsable (Catálogo y Mis Cursos) */}
-            <Route element={<RoleProtectedRoute allowedRoles={['usuario', 'responsable']} />}>
+            {/* ✅ Asegúrate de tener 'estudiante' aquí, que es el rol que estamos registrando */}
+            <Route element={<RoleProtectedRoute allowedRoles={['usuario', 'responsable', 'estudiante']} />}>
               <Route path="/catalogo" element={<CursosCatalogoPage />} />
               <Route path="/mis-cursos" element={<MisCursosPage />} />
             </Route>

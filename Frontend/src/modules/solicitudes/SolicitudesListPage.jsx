@@ -27,9 +27,6 @@ export default function SolicitudesListPage() {
     tipo_cambio: ''
   });
   
-  // ✅ NUEVO: Filtros de fecha para reporte
-  const [fechaInicio, setFechaInicio] = useState('');
-  const [fechaFin, setFechaFin] = useState('');
 
   const [showFilters, setShowFilters] = useState(false);
   const [deleteModal, setDeleteModal] = useState(null);
@@ -297,56 +294,6 @@ export default function SolicitudesListPage() {
   const shouldShowDevColumn = user?.rol === 'comite' && ['aprobadas', 'realizadas', 'todas'].includes(activeTab);
 
 
-  // Función para filtrar localmente por fechas (adicional a los filtros de API)
-  const getSolicitudesFiltradasPorFecha = () => {
-    return solicitudes.filter(sol => {
-      if (!fechaInicio && !fechaFin) return true;
-      const fechaSol = new Date(sol.fecha_solicitud).getTime(); 
-      const inicio = fechaInicio ? new Date(fechaInicio).getTime() : 0;
-      // Sumamos 86400000ms (1 día) a la fecha fin para incluir el día completo seleccionado
-      const fin = fechaFin ? new Date(fechaFin).getTime() + 86400000 : Infinity;
-      return fechaSol >= inicio && fechaSol < fin;
-    });
-  };
-
-  const descargarPDF = () => {
-    const doc = new jsPDF();
-    const solicitudesReporte = getSolicitudesFiltradasPorFecha();
-
-    // Título y Fecha de generación
-    doc.setFontSize(18);
-    doc.text("Reporte de Gestión de Cambios", 14, 20);
-    doc.setFontSize(10);
-    doc.text(`Generado el: ${new Date().toLocaleDateString()}`, 14, 28);
-
-    // Definición de columnas y filas
-    const tableColumn = ["ID", "Solicitante", "Estado", "Prioridad", "Encargado", "Fecha"];
-    const tableRows = [];
-
-    solicitudesReporte.forEach(sol => {
-      const rowData = [
-        sol.id,
-        `${sol.nombre_solicitante} ${sol.apellido_solicitante}`,
-        sol.estado,
-        sol.prioridad,
-        devMap[sol.asignado_a] || 'Sin asignar', // Usamos el mapa de nombres
-        new Date(sol.fecha_solicitud).toLocaleDateString()
-      ];
-      tableRows.push(rowData);
-    });
-
-    autoTable(doc, {
-      head: [tableColumn],
-      body: tableRows,
-      startY: 35,
-      theme: 'grid',
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [41, 128, 185] } // Color azul profesional
-    });
-
-    doc.save("reporte_solicitudes.pdf");
-  };
-
   return (
     <div className="space-y-8">
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
@@ -481,38 +428,6 @@ export default function SolicitudesListPage() {
                 </button>
               </div>
             </div>
-
-            {/* ✅ NUEVO: BLOQUE PARA FECHAS Y REPORTE */}
-            <div className="md:col-span-3 border-t border-gray-200 pt-4 mt-2">
-              <h4 className="text-xs font-bold text-gray-500 uppercase mb-3">Reportes y Rango de Fechas</h4>
-              <div className="flex flex-col md:flex-row gap-4 items-end">
-                <div className="space-y-1 w-full md:w-auto">
-                  <label className="text-xs font-semibold text-gray-500">Desde:</label>
-                  <input 
-                    type="date" 
-                    value={fechaInicio}
-                    onChange={(e) => setFechaInicio(e.target.value)}
-                    className="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 p-2"
-                  />
-                </div>
-                <div className="space-y-1 w-full md:w-auto">
-                  <label className="text-xs font-semibold text-gray-500">Hasta:</label>
-                  <input 
-                    type="date" 
-                    value={fechaFin}
-                    onChange={(e) => setFechaFin(e.target.value)}
-                    className="w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 p-2"
-                  />
-                </div>
-                <button 
-                  onClick={descargarPDF}
-                  className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition shadow-sm font-medium"
-                >
-                  <span className="text-lg">📄</span> Descargar PDF
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 

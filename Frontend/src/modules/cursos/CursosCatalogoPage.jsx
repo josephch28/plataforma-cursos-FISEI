@@ -105,7 +105,7 @@ export default function CursosCatalogoPage() {
       setFeedback({
         type: 'error',
         title: 'Acceso restringido',
-        message: 'Solo los usuarios con rol "usuario" pueden inscribirse desde el catálogo.'
+        message: 'Solo los estudiantes pueden inscribirse desde el catálogo.'
       });
       return;
     }

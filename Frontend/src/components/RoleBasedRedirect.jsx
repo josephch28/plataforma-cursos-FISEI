@@ -1,27 +1,30 @@
-import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 export default function RoleBasedRedirect() {
-  const { user, loading } = useAuth();
-
-  if (loading) return <div className="text-center py-8">Cargando...</div>;
+  const { user } = useAuth();
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
 
-  // Redirigir según el rol
   switch (user.rol) {
     case 'admin':
-      return <Navigate to="/dashboard" replace />;
     case 'develop':
       return <Navigate to="/dashboard" replace />;
+    
     case 'responsable':
-      return <Navigate to="/mis-cursos" replace />;
+      return <Navigate to="/cursos" replace />;
+      
     case 'usuario':
+    case 'estudiante': 
       return <Navigate to="/catalogo" replace />;
+
+    // ✅ NUEVO: Caso explícito para comité
+    case 'comite':
+      return <Navigate to="/solicitudes/dashboard" replace />;
+      
     default:
-      return <Navigate to="/catalogo" replace />;
+      return <Navigate to="/catalogo" replace />; 
   }
 }

@@ -1,8 +1,8 @@
 // src/controllers/solicitudes.controller.js
-const pool = require('../db');
+import pool from '../db.js';
 
 // Listar todas las solicitudes con filtros
-exports.list = async (req, res) => {
+export const list = async (req, res) => {
   try {
     const {
       tipo_formulario,
@@ -11,9 +11,8 @@ exports.list = async (req, res) => {
       encargado,
       fecha_desde,
       fecha_hasta,
-
       q,
-      asignado_a // Nuevo filtro
+      asignado_a
     } = req.query;
 
     const filters = [];
@@ -65,7 +64,6 @@ exports.list = async (req, res) => {
       filters.push('(nombre_solicitante LIKE ? OR apellido_solicitante LIKE ? OR descripcion LIKE ? OR razon LIKE ?)');
       const searchTerm = `%${q}%`;
       params.push(searchTerm, searchTerm, searchTerm, searchTerm);
-
     }
 
     if (asignado_a) {
@@ -87,19 +85,29 @@ exports.list = async (req, res) => {
   }
 };
 
-// Obtener estadísticas del dashboard
-exports.stats = async (req, res) => {
+// Obtener estadísticas del dashboard (Lógica corregida)
+export const stats = async (req, res) => {
   try {
-    const [total] = await pool.query('SELECT COUNT(*) as total FROM solicitudes_cambio');
-    const [pendientes] = await pool.query('SELECT COUNT(*) as total FROM solicitudes_cambio WHERE estado = "pendiente"');
-    const [realizadas] = await pool.query('SELECT COUNT(*) as total FROM solicitudes_cambio WHERE estado = "realizado"');
+    const [totalResult] = await pool.query('SELECT COUNT(*) as count FROM solicitudes_cambio');
+    const total = totalResult[0].count;
+
+    // Pendientes: Incluye 'pendiente' (esperando comité) y 'aprobado' (esperando dev)
+    const [pendientesResult] = await pool.query(
+      "SELECT COUNT(*) as count FROM solicitudes_cambio WHERE estado IN ('pendiente', 'aprobado')"
+    );
+
+    // Realizadas: Incluye 'realizado' (terminó dev) Y 'verificado' (se cerró el ciclo)
+    const [realizadasResult] = await pool.query(
+      "SELECT COUNT(*) as count FROM solicitudes_cambio WHERE estado IN ('realizado', 'verificado')"
+    );
+
     const [porTipo] = await pool.query('SELECT tipo_formulario, COUNT(*) as total FROM solicitudes_cambio GROUP BY tipo_formulario');
     const [porPrioridad] = await pool.query('SELECT prioridad, COUNT(*) as total FROM solicitudes_cambio GROUP BY prioridad');
 
     res.json({
-      total: total[0].total,
-      pendientes: pendientes[0].total,
-      realizadas: realizadas[0].total,
+      total,
+      pendientes: pendientesResult[0].count,
+      realizadas: realizadasResult[0].count,
       porTipo,
       porPrioridad
     });
@@ -109,8 +117,11 @@ exports.stats = async (req, res) => {
   }
 };
 
+// Obtener estadísticas (Alias para mantener compatibilidad si se usa con otro nombre)
+export const getSolicitudesStats = stats;
+
 // Obtener una solicitud por ID
-exports.get = async (req, res) => {
+export const get = async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM solicitudes_cambio WHERE id = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Solicitud no encontrada' });
@@ -122,7 +133,7 @@ exports.get = async (req, res) => {
 };
 
 // Crear nueva solicitud
-exports.create = async (req, res) => {
+export const create = async (req, res) => {
   try {
     const {
       tipo_formulario,
@@ -147,7 +158,6 @@ exports.create = async (req, res) => {
       entorno_bd
     } = req.body;
 
-    // Default encargado si no viene
     const enc1 = encargado1 || 'Sistema';
 
     const [result] = await pool.query(
@@ -165,8 +175,6 @@ exports.create = async (req, res) => {
       ]
     );
 
-
-
     const [row] = await pool.query('SELECT * FROM solicitudes_cambio WHERE id = ?', [result.insertId]);
     res.status(201).json(row[0]);
   } catch (error) {
@@ -176,7 +184,7 @@ exports.create = async (req, res) => {
 };
 
 // Actualizar solicitud
-exports.update = async (req, res) => {
+export const update = async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -186,7 +194,6 @@ exports.update = async (req, res) => {
       entorno_back, entorno_front, entorno_bd, estado
     } = req.body;
 
-    // Si se cambia el estado a 'realizado', establecer fecha_termino
     let query = `UPDATE solicitudes_cambio SET
       tipo_formulario = ?, nombre_solicitante = ?, apellido_solicitante = ?,
       prioridad = ?, fecha_solicitud = ?, encargado1 = ?, encargado2 = ?,
@@ -201,7 +208,6 @@ exports.update = async (req, res) => {
       !!entorno_back, !!entorno_front, !!entorno_bd, estado
     ];
 
-    // Verificar si el estado cambió a 'realizado'
     const [current] = await pool.query('SELECT estado FROM solicitudes_cambio WHERE id = ?', [id]);
     if (current.length && current[0].estado !== 'realizado' && estado === 'realizado') {
       query += ', fecha_termino = NOW()';
@@ -221,7 +227,7 @@ exports.update = async (req, res) => {
 };
 
 // Eliminar solicitud
-exports.remove = async (req, res) => {
+export const remove = async (req, res) => {
   try {
     await pool.query('DELETE FROM solicitudes_cambio WHERE id = ?', [req.params.id]);
     res.status(204).send();
@@ -231,22 +237,19 @@ exports.remove = async (req, res) => {
   }
 };
 
-
 // Aprobar solicitud (Comité) -> Asignar a Developer
-exports.aprobar = async (req, res) => {
+export const aprobar = async (req, res) => {
   try {
     const { id } = req.params;
     const { developer_id } = req.body;
 
-    // Validaciones básicas (podrían mejorarse validando si el user es dev)
     if (!developer_id) return res.status(400).json({ message: 'Se requiere asignar un desarrollador' });
 
     await pool.query('UPDATE solicitudes_cambio SET estado="aprobado", asignado_a=? WHERE id=?', [developer_id, id]);
 
-    // Integración GitHub (Movida al aprobar)
+    // Integración GitHub
     if (process.env.GITHUB_TOKEN && process.env.GITHUB_OWNER && process.env.GITHUB_REPO) {
       try {
-        // Obtenemos los datos de la solicitud para el issue
         const [solRows] = await pool.query('SELECT * FROM solicitudes_cambio WHERE id = ?', [id]);
         if (solRows.length) {
           const sol = solRows[0];
@@ -271,8 +274,8 @@ ${sol.entornos || 'N/A'}
 **Contacto:** ${sol.contacto}
           `;
 
-          const fetchFn = global.fetch || require('node-fetch');
-          const ghRes = await fetchFn(`https://api.github.com/repos/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO}/issues`, {
+          // Usamos el fetch global (Node 18+ y v24 lo soportan nativamente)
+          const ghRes = await fetch(`https://api.github.com/repos/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO}/issues`, {
             method: 'POST',
             headers: {
               'Authorization': `token ${process.env.GITHUB_TOKEN}`,
@@ -302,7 +305,7 @@ ${sol.entornos || 'N/A'}
 };
 
 // Rechazar solicitud (Comité)
-exports.rechazar = async (req, res) => {
+export const rechazar = async (req, res) => {
   try {
     const { id } = req.params;
     await pool.query('UPDATE solicitudes_cambio SET estado="rechazado" WHERE id=?', [id]);
@@ -314,7 +317,7 @@ exports.rechazar = async (req, res) => {
 };
 
 // Realizar cambio (Developer)
-exports.realizar = async (req, res) => {
+export const realizar = async (req, res) => {
   try {
     const { id } = req.params;
     await pool.query('UPDATE solicitudes_cambio SET estado="realizado", fecha_termino=NOW() WHERE id=?', [id]);
@@ -326,13 +329,10 @@ exports.realizar = async (req, res) => {
 };
 
 // Verificar cambio (Comité) -> Finalizar
-exports.verificar = async (req, res) => {
+export const verificar = async (req, res) => {
   try {
     const { id } = req.params;
-    const { accion } = req.body; // 'aceptar' o 'rechazar' (reabrir?)
-
-    // Si la acción es aceptar, pasa a verificado. Si es rechazar, ¿vuelve a aprobado/pendiente?
-    // Por simplicidad, asumimos cierre exitoso 'verificado'
+    // Asumimos cierre exitoso 'verificado'
     await pool.query('UPDATE solicitudes_cambio SET estado="verificado" WHERE id=?', [id]);
     res.json({ message: 'Cambio verificado y cerrado' });
   } catch (error) {

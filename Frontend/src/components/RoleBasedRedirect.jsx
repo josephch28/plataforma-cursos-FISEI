@@ -8,7 +8,6 @@ export default function RoleBasedRedirect() {
     return <Navigate to="/login" replace />;
   }
 
-  // Redirecciones según el rol
   switch (user.rol) {
     case 'admin':
     case 'develop':
@@ -21,12 +20,11 @@ export default function RoleBasedRedirect() {
     case 'estudiante': 
       return <Navigate to="/catalogo" replace />;
 
-    // ✅ NUEVO: Caso para el comité
+    // ✅ NUEVO: Caso explícito para comité
     case 'comite':
       return <Navigate to="/solicitudes/dashboard" replace />;
       
     default:
-      // Mándalo siempre a una ruta interna segura.
       return <Navigate to="/catalogo" replace />; 
   }
 }

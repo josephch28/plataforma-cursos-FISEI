@@ -18,7 +18,7 @@ module.exports = function (requiredRole) {
     try {
       // 2. Verificar el token usando el SECRETO
       // Asegúrate de tener JWT_SECRET en tu archivo .env
-      const payload = jwt.verify(token, process.env.JWT_SECRET || 'tu_secreto_por_defecto_MUY_SEGURO');
+      const payload = jwt.verify(token, process.env.JWT_SECRET || 'secret');
 
       req.user = payload; // Adjunta { cedula, rol, nombre } a la request
 

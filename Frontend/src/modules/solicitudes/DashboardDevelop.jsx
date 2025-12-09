@@ -13,10 +13,22 @@ export default function DashboardDevelop() {
   const [assigned, setAssigned] = useState([]);
   const [error, setError] = useState('');
   const [selectedSolicitud, setSelectedSolicitud] = useState(null);
+  const [developerFilter, setDeveloperFilter] = useState('');
+  const [developers, setDevelopers] = useState([]);
 
   useEffect(() => {
     loadStats();
-  }, [user]);
+    loadDevelopers();
+  }, [user, developerFilter]);
+
+  const loadDevelopers = async () => {
+    try {
+      const devs = await API.listDevelopers();
+      setDevelopers(devs);
+    } catch (error) {
+      console.error('Error al cargar desarrolladores:', error);
+    }
+  };
 
   const loadStats = async () => {
     try {
@@ -28,7 +40,14 @@ export default function DashboardDevelop() {
       const [s, list, misAsignadas] = await Promise.all(promises);
 
       setStats(s);
-      setRecent((list || []).slice(0, 5));
+      
+      // Apply developer filter if selected
+      let filteredList = list || [];
+      if (developerFilter) {
+        filteredList = filteredList.filter(sol => String(sol.asignado_a) === String(developerFilter));
+      }
+      
+      setRecent(filteredList.slice(0, 5));
       if (misAsignadas) {
         setAssigned(misAsignadas);
       }
@@ -218,6 +237,25 @@ export default function DashboardDevelop() {
         <div className="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
           <h2 className="text-lg font-bold text-gray-800">Últimas Solicitudes (Global)</h2>
           <Link to="/solicitudes" className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline">Ver todas las solicitudes &rarr;</Link>
+        </div>
+
+        {/* Filter by Developer */}
+        <div className="px-6 py-3 bg-gray-50 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-700">Filtrar por quien realizó los cambios:</label>
+            <select
+              value={developerFilter}
+              onChange={(e) => setDeveloperFilter(e.target.value)}
+              className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Todos los desarrolladores</option>
+              {developers.map((dev) => (
+                <option key={dev.cedula} value={dev.cedula}>
+                  {dev.nombre} {dev.apellido}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {error ? (

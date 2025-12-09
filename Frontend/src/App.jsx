@@ -1,6 +1,6 @@
 // src/App.jsx
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { useAuth } from './context/AuthContext'; 
+import { useAuth } from './context/AuthContext';
 
 import CursosListPage from './modules/cursos/CursosListPage';
 import CursosCreatePage from './modules/cursos/CursosCreatePage';
@@ -24,7 +24,7 @@ import DashboardPage from './modules/dashboard/DashboardPage';
 import SolicitudesListPage from './modules/solicitudes/SolicitudesListPage';
 import FormSolicitud from './modules/solicitudes/FormSolicitud';
 import DashboardDevelop from './modules/solicitudes/DashboardDevelop';
-import CursosCatalogoPage from './modules/cursos/CursosCatalogoPage'; 
+import CursosCatalogoPage from './modules/cursos/CursosCatalogoPage';
 import PagoSubirPage from './modules/pagos/PagoSubirPage';
 import AprobacionPagosPage from './modules/pagos/AprobacionPagosPage';
 import MisCursosPage from './modules/misCursos/MisCursosPage';
@@ -34,7 +34,7 @@ import MisCursosPage from './modules/misCursos/MisCursosPage';
 // - Si HAY usuario: Lo redirige automáticamente a su panel (Dashboard/Cursos)
 const PublicRoute = ({ children }) => {
   const { user } = useAuth();
-  if (user) return <RoleBasedRedirect />; 
+  if (user) return <RoleBasedRedirect />;
   return children;
 };
 
@@ -46,11 +46,11 @@ export default function App() {
         <Route path="/" element={
           <PublicRoute><LandingPage /></PublicRoute>
         } />
-        
+
         <Route path="/login" element={
           <PublicRoute><LoginPage /></PublicRoute>
         } />
-        
+
         <Route path="/register" element={
           <PublicRoute><RegisterPage /></PublicRoute>
         } />
@@ -58,7 +58,7 @@ export default function App() {
         {/* --- RUTAS PROTEGIDAS --- */}
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
-            
+
             {/* Rutas públicas (requieren autenticación pero no rol específico) */}
             <Route path="/pago/:idInscripcion/subir" element={<PagoSubirPage />} />
 

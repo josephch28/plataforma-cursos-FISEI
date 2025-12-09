@@ -2,8 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { Link } from 'react-router-dom'; // Asegúrate de importar Link
-import { HiOutlineArrowLeft } from 'react-icons/hi'; // Importar icono
+import { Link } from 'react-router-dom';
+import { HiOutlineArrowLeft } from 'react-icons/hi';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -15,7 +15,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      // If already authenticated, redirect according to role
+      // Redirección si ya existe sesión
       switch (user.rol) {
         case 'admin':
         case 'develop':
@@ -26,6 +26,9 @@ export default function LoginPage() {
           break;
         case 'usuario':
           navigate('/catalogo');
+          break;
+        case 'comite': // ✅ AGREGADO AQUÍ
+          navigate('/solicitudes/dashboard');
           break;
         default:
           break;
@@ -41,7 +44,7 @@ export default function LoginPage() {
     try {
       const userData = await login(email, password);
 
-      // Redirigir según el rol
+      // Redirigir según el rol al hacer login
       switch (userData.rol) {
         case 'admin':
           navigate('/dashboard');
@@ -50,7 +53,6 @@ export default function LoginPage() {
           navigate('/cursos');
           break;
 
-        // 👇 AGREGA ESTE CASO:
         case 'estudiante':
         case 'usuario':
           navigate('/catalogo');
@@ -59,8 +61,12 @@ export default function LoginPage() {
         case 'develop':
           navigate('/dashboard');
           break;
+
+        case 'comite': // ✅ AGREGADO AQUÍ TAMBIÉN
+          navigate('/solicitudes');
+          break;
+
         default:
-          // Cambia el default para que no mande a un lugar prohibido
           navigate('/catalogo');
       }
     } catch (err) {
@@ -71,6 +77,7 @@ export default function LoginPage() {
   };
 
   return (
+    // ... (El resto del renderizado visual se mantiene igual)
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 relative">
       <Link 
         to="/" 

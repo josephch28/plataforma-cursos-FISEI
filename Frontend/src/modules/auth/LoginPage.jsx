@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { Link } from 'react-router-dom'; // Asegúrate de importar Link
+import { HiOutlineArrowLeft } from 'react-icons/hi'; // Importar icono
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -69,7 +71,15 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100 relative">
+      <Link 
+        to="/" 
+        className="absolute top-6 left-6 flex items-center gap-2 text-gray-500 hover:text-blue-700 transition-all duration-300 font-medium px-4 py-2 rounded-full hover:bg-white/50"
+      >
+        <HiOutlineArrowLeft className="w-5 h-5" />
+        <span>Volver al inicio</span>
+      </Link>
+
       <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-blue-700">Plataforma de Cursos FISEI</h1>

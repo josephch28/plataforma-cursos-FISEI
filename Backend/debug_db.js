@@ -1,26 +1,22 @@
 require('dotenv').config();
-const pool = require('./src/db');
+const mysql = require('mysql2/promise');
 
-async function fixColumn() {
+const config = {
+    host: process.env.DB_HOST || '127.0.0.1',
+    port: process.env.DB_PORT || 3307,
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASS || '',
+    database: process.env.DB_NAME || 'plataforma_cursos'
+};
+
+console.log('Testing DB Access with config:', config);
+
+(async () => {
     try {
-        // 1. Change column type
-        console.log('Altering column...');
-        await pool.query("ALTER TABLE solicitudes_cambio MODIFY COLUMN asignado_a VARCHAR(20)");
-        console.log('Column altered to VARCHAR(20).');
-
-        // 2. Try to fix existing broken IDs (1 -> 0000000001) if they match specific pattern
-        // This is optional but helpful for the user's specific case "0000000001"
-        const [rows] = await pool.query("SELECT id, asignado_a FROM solicitudes_cambio WHERE asignado_a = '1'");
-        if (rows.length > 0) {
-            console.log(`Found ${rows.length} rows with ID '1'. Updating to '0000000001'...`);
-            await pool.query("UPDATE solicitudes_cambio SET asignado_a = '0000000001' WHERE asignado_a = '1'");
-            console.log('Update complete.');
-        }
-
-    } catch (err) {
-        console.error('Error:', err.message);
+        const conn = await mysql.createConnection(config);
+        console.log('Success! Connected.');
+        await conn.end();
+    } catch (e) {
+        console.error('Connection Failed:', e);
     }
-    process.exit();
-}
-
-fixColumn();
+})();

@@ -81,8 +81,6 @@ exports.create = async (req, res) => {
 
     // 1.1 VALIDACIÓN DE FECHAS DE INSCRIPCIÓN
     const now = new Date();
-    // Resetear horas para comparar solo fechas si se desea, o mantener tiempo.
-    // Usaremos la hora actual vs el rango.
 
     if (curso.fecha_inicio_inscripcion) {
       const inicio = new Date(curso.fecha_inicio_inscripcion);
@@ -93,8 +91,6 @@ exports.create = async (req, res) => {
 
     if (curso.fecha_fin_inscripcion) {
       const fin = new Date(curso.fecha_fin_inscripcion);
-      // Ajustamos al final del día si solo es fecha, pero si es datetime se respeta.
-      // Asumimos que la comparación simple funciona.
       if (now > fin) {
         return res.status(403).json({ message: `Las inscripciones finalizaron el ${fin.toLocaleDateString()}` });
       }
@@ -136,6 +132,96 @@ exports.create = async (req, res) => {
       return res.status(403).json({ message: 'No puedes inscribirte en un curso donde eres docente.' });
     }
 
+    // --- NUEVO: VALIDACIÓN DE REQUISITOS ---
+    const [requisitos] = await pool.query('SELECT * FROM curso_requisito WHERE id_curso = ? AND obligatorio = 1', [id_curso]);
+    let hasPendingSpecificReqs = false; // Flag to force 'pendiente' state if specific docs are not approved yet
+
+    if (requisitos.length > 0) {
+      // Obtener documentos del usuario (Generales y Específicos de este curso)
+      const [userDocs] = await pool.query(
+        `SELECT tipo_documento, id_curso, estado FROM usuario_documento 
+             WHERE cedula_usuario = ? AND (id_curso IS NULL OR id_curso = ?)`,
+        [cedulaUsuario, id_curso]
+      );
+
+      const missing = [];
+
+      // Helper for robust string matching
+      const normalize = (str) => (str || '').toString().trim().toLowerCase().normalize("NFC");
+
+      // MAPA DE COMPATIBILIDAD (Legacy vs Nuevos)
+      const REQ_MAP = {
+        'cédula de identidad': 'cedula',
+        'cedula de identidad': 'cedula',
+        'cedula': 'cedula',
+        'papeleta de votación': 'papeleta',
+        'papeleta de votacion': 'papeleta',
+        'papeleta': 'papeleta',
+        'carta de motivación': 'carta de motivacion',
+        'carta de motivacion': 'carta de motivacion',
+        'carnet estudiantil': 'carnet',
+        'carnet': 'carnet',
+        'título de tercer nivel': 'titulo',
+        'titulo de tercer nivel': 'titulo',
+        'titulo': 'titulo',
+        'título de bachiller/universitario': 'titulo',
+        'titulo de bachiller/universitario': 'titulo'
+      };
+
+      console.log('--- BACKEND VALIDATION DEBUG ---');
+      console.log('Curso ID:', id_curso);
+      console.log('User Docs:', userDocs.map(d => `${d.tipo_documento} (${d.id_curso}) [${d.estado}]`));
+
+      for (const req of requisitos) {
+        const reqName = normalize(req.nombre_requisito);
+        const targetType = REQ_MAP[reqName] || reqName;
+
+        console.log(`Checking Req: "${req.nombre_requisito}" -> Normalized: "${reqName}" -> Mapped: "${targetType}"`);
+
+        // Robust find
+        const doc = userDocs.find(d => {
+          const docName = normalize(d.tipo_documento);
+          // Match if docName equals the Requirement Name OR the Mapped Target
+          const nameMatch = (docName === reqName || docName === targetType);
+
+          if (req.tipo === 'GENERAL') {
+            // General must have NULL id_curso
+            return nameMatch && !d.id_curso;
+          } else {
+            // Specific must match id_curso
+            return nameMatch && Number(d.id_curso) === Number(id_curso);
+          }
+        });
+
+        if (doc) {
+          console.log(`   -> Found Match: "${doc.tipo_documento}" [${doc.estado}]`);
+        } else {
+          console.log(`   -> NO MATCH FOUND`);
+        }
+
+        if (req.tipo === 'GENERAL') {
+          if (!doc || (doc.estado || '').toLowerCase() !== 'aprobado') {
+            missing.push(`${req.nombre_requisito} (General - Debe estar Aprobado en Perfil)`);
+          }
+        } else { // ESPECIFICO
+          if (!doc) {
+            missing.push(`${req.nombre_requisito} (Específico - Debe subir el documento)`);
+          } else if ((doc.estado || '').toLowerCase() !== 'aprobado') {
+            // Doc exists but is not approved. Allow, but set pending flag.
+            hasPendingSpecificReqs = true;
+          }
+        }
+      }
+
+      if (missing.length > 0) {
+        return res.status(400).json({
+          message: 'Faltan requisitos obligatorios o no están aprobados.',
+          missing_requirements: missing
+        });
+      }
+    }
+    // ---------------------------------------
+
     // 6. VALIDACIÓN DEL PÚBLICO OBJETIVO
     const publicoObjetivo = (curso.publico_objetivo || '')
       .split(',')
@@ -160,7 +246,14 @@ exports.create = async (req, res) => {
     }
 
     // 8. Determinar estado e inscripción
-    const initialEstado = curso.es_pagado === 1 ? 'pendiente' : 'pagado';
+    // Si es pagado -> 'pendiente' (pago)
+    // Si es gratis pero tiene requisitos específicos pendientes -> 'pendiente' (validacion)
+    // Si es gratis y todo aprobado -> 'pagado' (equivale a inscrito/activo)
+    let initialEstado = curso.es_pagado === 1 ? 'pendiente' : 'pagado';
+
+    if (hasPendingSpecificReqs && initialEstado === 'pagado') {
+      initialEstado = 'pendiente';
+    }
 
     const [result] = await pool.query(
       'INSERT INTO inscripcion (cedula_usuario, id_curso, estado) VALUES (?, ?, ?)',
@@ -170,8 +263,9 @@ exports.create = async (req, res) => {
     const inscripcionId = result.insertId;
 
     // 7. Generar registro de pago si aplica
+    // Solo si NO hay requisitos pendientes de validación
     let pagoInfo = null;
-    if (curso.es_pagado === 1) {
+    if (curso.es_pagado === 1 && !hasPendingSpecificReqs) {
       const monto = Number(curso.costo ?? 0);
       const metodo = metodo_pago && ['transferencia', 'deposito'].includes(metodo_pago)
         ? metodo_pago

@@ -182,7 +182,14 @@ exports.getUserCourses = async (req, res) => {
                 p.numero_orden,
                 p.monto AS monto_pago,
                 p.comprobante_pdf,
-                'estudiante' AS rol
+                'estudiante' AS rol,
+                (
+                  SELECT GROUP_CONCAT(tipo_documento SEPARATOR ',') 
+                  FROM usuario_documento ud 
+                  WHERE ud.cedula_usuario = i.cedula_usuario 
+                    AND ud.id_curso = c.id_curso 
+                    AND ud.estado = 'rechazado'
+                ) as rejected_docs
             FROM inscripcion i
             JOIN curso c ON i.id_curso = c.id_curso
             LEFT JOIN pago p ON i.id_inscripcion = p.id_inscripcion

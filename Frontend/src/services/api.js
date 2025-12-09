@@ -256,6 +256,46 @@ export const API = {
       body: JSON.stringify({})
     });
     return await handleResponse(res);
+  },
+
+  // ===================== Documentos =====================
+  async uploadDocument(data) {
+    const token = localStorage.getItem('token');
+    let formData;
+
+    if (data instanceof FormData) {
+      formData = data;
+    } else {
+      formData = new FormData();
+      Object.keys(data).forEach(key => {
+        formData.append(key, data[key]);
+      });
+    }
+
+    const res = await fetch(`/api/documentos/upload`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData
+    });
+    return await handleResponse(res);
+  },
+  async getMyDocuments() {
+    const res = await fetch(`/api/documentos/mine`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
+  async getPendingDocuments() {
+    const res = await fetch(`/api/documentos/pending`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
+  async reviewDocument(id, result) { // result: { estado: 'aprobado'|'rechazado', observacion }
+    const res = await fetch(`/api/documentos/review/${id}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(result)
+    });
+    return await handleResponse(res);
   }
 
 

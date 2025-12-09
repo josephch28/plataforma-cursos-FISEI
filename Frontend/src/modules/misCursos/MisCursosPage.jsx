@@ -12,15 +12,22 @@ import {
 import { FaChalkboardTeacher, FaUserGraduate } from 'react-icons/fa';
 
 // Función auxiliar para obtener la información de estado (Inscripción)
-const getStatusInfo = (estado, es_pagado) => {
+const getStatusInfo = (estado, es_pagado, hasOrder) => {
     if (estado === 'aprobado') {
         return { text: 'Inscripción Aprobada', color: 'bg-green-100 text-green-700 border-green-200', icon: HiOutlineCheckCircle };
     }
     if (estado === 'pagado') {
         return { text: 'Pagado - Verificando', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: HiOutlineCheckCircle };
     }
+    // Si es pagado, esta pendiente, pero NO tiene orden de pago generada -> Es porque está validando requisitos
+    if (estado === 'pendiente' && es_pagado === 1 && !hasOrder) {
+        return { text: 'Validando Requisitos', color: 'bg-orange-100 text-orange-700 border-orange-200', icon: HiOutlineClock };
+    }
     if (estado === 'pendiente' && es_pagado === 1) {
         return { text: 'Pago Pendiente', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: HiOutlineCurrencyDollar };
+    }
+    if (estado === 'pendiente') {
+        return { text: 'En Revisión', color: 'bg-gray-100 text-gray-700 border-gray-200', icon: HiOutlineClock };
     }
     if (estado === 'pendiente') {
         return { text: 'En Revisión', color: 'bg-gray-100 text-gray-700 border-gray-200', icon: HiOutlineClock };
@@ -50,10 +57,15 @@ export default function MisCursosPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const navigate = useNavigate();
+    const [feedback, setFeedback] = useState(null);
 
     // Estado para la sección de Docencia
     const [activeTab, setActiveTab] = useState('activos'); // 'activos' | 'archivados'
     const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'activo', 'inactivo', 'finalizado'
+
+    // Correction Modal State
+    const [correctionModal, setCorrectionModal] = useState(null); // { curso, docs: [] }
+    const [uploadingCorrection, setUploadingCorrection] = useState(false);
 
     useEffect(() => {
         const loadCourses = async () => {
@@ -126,13 +138,17 @@ export default function MisCursosPage() {
 
 
     const renderStudentCard = (course) => {
-        const { text, color, icon: StatusIcon } = getStatusInfo(course.estado, course.es_pagado);
+        const { text, color, icon: StatusIcon } = getStatusInfo(course.estado, course.es_pagado, course.numero_orden);
         const isPagado = Boolean(Number(course.es_pagado));
+
+        // Check for rejected docs
+        const hasRejectedDocs = !!course.rejected_docs;
+
         const requiresUpload = isPagado && course.estado === 'pendiente' && course.pago_aprobado === 0;
 
         return (
             <div key={course.id_inscripcion} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col md:flex-row gap-6 transition-all hover:shadow-md">
-                {/* Icon Column */}
+                {/* ... (Icon Column) ... */}
                 <div className="hidden md:flex flex-col items-center justify-center w-24 bg-blue-50 rounded-lg p-2 text-blue-600">
                     <HiOutlineBookOpen className="w-10 h-10" />
                 </div>
@@ -147,13 +163,21 @@ export default function MisCursosPage() {
                                 <span>Inscripción #{course.id_inscripcion}</span>
                             </p>
                         </div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1 w-fit ${color}`}>
-                            <StatusIcon className="w-4 h-4" />
-                            {text}
-                        </span>
+                        {hasRejectedDocs ? (
+                            <span className="px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1 w-fit bg-red-100 text-red-700 border-red-200">
+                                <HiOutlineXCircle className="w-4 h-4" />
+                                Documentos Rechazados
+                            </span>
+                        ) : (
+                            <span className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1 w-fit ${color}`}>
+                                <StatusIcon className="w-4 h-4" />
+                                {text}
+                            </span>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-4 text-sm">
+                        {/* ... (existing grids) ... */}
                         {isPagado && (
                             <div className="bg-gray-50 p-2 rounded border border-gray-100">
                                 <span className="block text-gray-500 text-xs">Monto</span>
@@ -171,7 +195,17 @@ export default function MisCursosPage() {
 
                 {/* Action Column */}
                 <div className="flex flex-col justify-center border-t md:border-t-0 md:border-l border-gray-100 md:pl-6 pt-4 md:pt-0 gap-3 min-w-[200px]">
-                    {isPagado && (
+                    {hasRejectedDocs && (
+                        <button
+                            onClick={() => handleOpenCorrection(course)}
+                            className="w-full px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 bg-red-600 text-white hover:bg-red-700 shadow-lg shadow-red-600/20"
+                        >
+                            <HiOutlineUpload />
+                            Corregir Documentos
+                        </button>
+                    )}
+
+                    {!hasRejectedDocs && isPagado && course.estado !== 'pagado' && (
                         <Link
                             to={`/pago/${course.id_inscripcion}/subir`}
                             className={`w-full px-4 py-2.5 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${requiresUpload
@@ -183,67 +217,81 @@ export default function MisCursosPage() {
                             {requiresUpload ? 'Subir Comprobante' : 'Ver Comprobante'}
                         </Link>
                     )}
-                    {/* Placeholder for future actions like "Ver Certificado" or "Ir al Curso" */}
+                    {/* ... (other buttons) ... */}
                     {course.estado === 'aprobado' && (
                         <button className="w-full px-4 py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-lg text-sm font-semibold hover:bg-green-100 transition-colors">
                             Ver Detalles
                         </button>
                     )}
                 </div>
+                {/* FEEDBACK MODAL */}
+                {feedback && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
+                        <div className={`bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-fade-in-up border-l-4 ${feedback.type === 'success' ? 'border-green-500' : 'border-red-500'}`}>
+                            <div className="flex items-start gap-4">
+                                <div className={`p-2 rounded-full shrink-0 ${feedback.type === 'success' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                                    {feedback.type === 'success' ? <HiOutlineCheckCircle className="w-6 h-6" /> : <HiOutlineXCircle className="w-6 h-6" />}
+                                </div>
+                                <div className="flex-1">
+                                    <h3 className="text-lg font-bold text-gray-900 mb-1">{feedback.title}</h3>
+                                    <p className="text-sm text-gray-600 mb-4">{feedback.message}</p>
+                                    <button
+                                        onClick={() => {
+                                            setFeedback(null);
+                                            if (feedback.onClose) feedback.onClose();
+                                        }}
+                                        className="w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold rounded-lg transition-colors"
+                                    >
+                                        Entendido
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         );
     };
+
+
 
     const renderInstructorCard = (course) => {
         const { text, color, badgeColor } = getCourseStatusInfo(course.curso_estado, course.activo);
 
         return (
-            <div key={course.id_curso} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 transition-all hover:shadow-md group relative overflow-hidden">
-                <div className={`absolute top-0 left-0 w-1.5 h-full ${badgeColor}`}></div>
-
-                <div className="flex justify-between items-start mb-4">
-                    <div>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${color}`}>
-                            <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${badgeColor.replace('bg-', 'bg-')}`}></div>
+            <div key={course.id_curso} className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col justify-between transition-all hover:shadow-md h-full">
+                <div>
+                    <div className="flex justify-between items-start mb-4">
+                        <div className={`p-3 rounded-lg bg-indigo-50 text-indigo-600`}>
+                            <FaChalkboardTeacher className="w-6 h-6" />
+                        </div>
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold border ${color}`}>
                             {text}
                         </span>
                     </div>
-                    {/* Dropdown de acciones si fuera necesario, o link */}
+
+                    <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-2">{course.nombre}</h3>
+                    <p className="text-gray-500 text-sm mb-4 line-clamp-2">{course.descripcion}</p>
+
+                    <div className="grid grid-cols-2 gap-3 text-xs text-gray-500 mb-4">
+                        <div className="bg-gray-50 p-2 rounded">
+                            <span className="block font-semibold text-gray-700">Inicio</span>
+                            {course.fecha_inicio ? new Date(course.fecha_inicio).toLocaleDateString() : 'Por definir'}
+                        </div>
+                        <div className="bg-gray-50 p-2 rounded">
+                            <span className="block font-semibold text-gray-700">Costo</span>
+                            {course.costo > 0 ? `$${course.costo}` : 'Gratis'}
+                        </div>
+                    </div>
                 </div>
 
-                <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-indigo-600 transition-colors">
-                    {course.curso_nombre}
-                </h3>
-
-                <div className="flex items-center gap-3 text-sm text-gray-500 mb-6">
-                    <span className="flex items-center gap-1">
-                        <FaChalkboardTeacher />
-                        {course.rol === 'responsable' ? 'Responsable' : course.rol === 'docente_principal' ? 'Docente' : 'Encargado'}
-                    </span>
-                    {course.fecha_inicio && (
-                        <span className="flex items-center gap-1">
-                            <HiOutlineClock />
-                            {new Date(course.fecha_inicio).toLocaleDateString()}
-                        </span>
-                    )}
-                </div>
-
-                <div className="pt-4 border-t border-gray-100 flex justify-end">
-                    {course.rol === 'docente_principal' ? (
-                        <button
-                            onClick={() => navigate(`/evaluaciones`, { state: { cursoId: course.id_curso } })}
-                            className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
-                        >
-                            Subir Notas &rarr;
-                        </button>
-                    ) : (
-                        <button
-                            onClick={() => navigate(`/cursos`, { state: { highlightedCursoId: course.id_curso } })} // Navegar a la lista gral o a detalle
-                            className="text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors"
-                        >
-                            Gestionar Curso &rarr;
-                        </button>
-                    )}
+                <div className="border-t pt-4 mt-auto">
+                    <Link
+                        to={`/cursos/${course.id_curso}/gestion`}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors font-medium text-sm"
+                    >
+                        Gestionar Curso
+                    </Link>
                 </div>
             </div>
         );
@@ -251,6 +299,7 @@ export default function MisCursosPage() {
 
     return (
         <div className="max-w-5xl mx-auto pb-12 px-4 sm:px-6">
+            {/* ... (Header, Error) ... */}
             <header className="mb-10 py-6 border-b border-gray-100">
                 <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">Mis Cursos</h1>
                 <p className="text-lg text-gray-500 mt-2">Gestiona tus inscripciones y actividades académicas.</p>
@@ -263,7 +312,7 @@ export default function MisCursosPage() {
             )}
 
             <div className="space-y-12">
-                {/* Sección Docencia (Prioridad si tiene cursos como docente) */}
+                {/* ... (Sections) ... */}
                 {(courses.some(c => c.rol !== 'estudiante') || user.rol !== 'estudiante') && (
                     <section>
                         <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
@@ -271,8 +320,7 @@ export default function MisCursosPage() {
                                 <FaChalkboardTeacher className="text-indigo-600" />
                                 Docencia y Gestión
                             </h2>
-
-                            {/* Filtros y Tabs */}
+                            {/* ... (Filters) ... */}
                             <div className="flex flex-col sm:flex-row gap-3">
                                 <div className="bg-gray-100 p-1 rounded-lg flex text-sm font-medium">
                                     <button
@@ -321,7 +369,6 @@ export default function MisCursosPage() {
 
                 {/* Sección Estudiante */}
                 <section>
-                    {/* Solo mostrar header si también se mostró la sección docente, para separar visualmente */}
                     {(courses.some(c => c.rol !== 'estudiante') || user.rol !== 'estudiante') && <hr className="border-gray-200 my-10" />}
 
                     <div className="flex items-center justify-between mb-6">
@@ -333,7 +380,6 @@ export default function MisCursosPage() {
                     </div>
 
                     {studentCourses.length === 0 ? (
-                        // ... (Mismo contenido empty state)
                         <div className="bg-gray-50 border border-dashed border-gray-300 rounded-2xl p-10 text-center">
                             <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-500">
                                 <HiOutlineBookOpen className="w-8 h-8" />
@@ -351,6 +397,71 @@ export default function MisCursosPage() {
                     )}
                 </section>
             </div>
+
+            {/* CORRECTION MODAL */}
+            {correctionModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden p-6 animate-fade-in-up">
+                        <h3 className="text-xl font-bold text-red-700 mb-4 flex items-center gap-2">
+                            <HiOutlineXCircle /> Corrección de Documentos
+                        </h3>
+                        <p className="text-gray-600 mb-4">
+                            Los siguientes documentos para <strong>{correctionModal.curso.curso_nombre}</strong> fueron rechazados. Por favor, súbelos nuevamente.
+                        </p>
+
+                        <ul className="space-y-3 mb-6">
+                            {correctionModal.docs.map(docName => (
+                                <li key={docName} className="bg-red-50 p-4 rounded-lg border border-red-100">
+                                    <div className="flex justify-between items-center mb-2">
+                                        <span className="text-sm font-bold text-red-800 capitalize">{docName}</span>
+                                    </div>
+                                    <input
+                                        type="file"
+                                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-red-100 file:text-red-700 hover:file:bg-red-200 cursor-pointer"
+                                        onChange={(e) => handleUploadCorrection(docName, e.target.files[0])}
+                                        disabled={uploadingCorrection}
+                                    />
+                                </li>
+                            ))}
+                        </ul>
+
+                        <div className="flex justify-end">
+                            <button
+                                onClick={() => setCorrectionModal(null)}
+                                className="px-4 py-2 border rounded-lg hover:bg-gray-50 text-gray-700"
+                            >
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* FEEDBACK MODAL */}
+            {feedback && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
+                    <div className={`bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 animate-fade-in-up border-l-4 ${feedback.type === 'success' ? 'border-green-500' : 'border-red-500'}`}>
+                        <div className="flex items-start gap-4">
+                            <div className={`p-2 rounded-full shrink-0 ${feedback.type === 'success' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                                {feedback.type === 'success' ? <HiOutlineCheckCircle className="w-6 h-6" /> : <HiOutlineXCircle className="w-6 h-6" />}
+                            </div>
+                            <div className="flex-1">
+                                <h3 className="text-lg font-bold text-gray-900 mb-1">{feedback.title}</h3>
+                                <p className="text-sm text-gray-600 mb-4">{feedback.message}</p>
+                                <button
+                                    onClick={() => {
+                                        setFeedback(null);
+                                        if (feedback.onClose) feedback.onClose();
+                                    }}
+                                    className="w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold rounded-lg transition-colors"
+                                >
+                                    Entendido
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

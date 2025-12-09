@@ -11,10 +11,10 @@ router.post('/upload/:idInscripcion', auth(), ctrl.uploadComprobante);
 // 2. Obtener orden de pago por inscripción
 router.get('/orden/:idInscripcion', auth(), ctrl.getOrdenByInscripcion);
 
-// 3. Ruta para listar pagos pendientes (Admin)
-router.get('/', auth('admin'), ctrl.listPending);
+// 3. Ruta para listar pagos pendientes (Admin y Responsable)
+router.get('/', auth(['admin', 'responsable']), ctrl.listPending);
 
-// 4. Ruta para aprobar un pago (Admin)
-router.put('/:idPago/aprobar', auth('admin'), ctrl.approvePayment);
+// 4. Ruta para aprobar un pago (Admin y Responsable)
+router.put('/:idPago/aprobar', auth(['admin', 'responsable']), ctrl.approvePayment);
 
 module.exports = router;

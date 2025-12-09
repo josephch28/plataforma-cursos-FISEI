@@ -15,6 +15,24 @@ const PUBLICO_LABELS = {
   'Público General': 'Público General'
 };
 
+const REQ_MAP = {
+  'cédula de identidad': 'cedula',
+  'cedula de identidad': 'cedula',
+  'cedula': 'cedula',
+  'papeleta de votación': 'papeleta',
+  'papeleta de votacion': 'papeleta',
+  'papeleta': 'papeleta',
+  'carta de motivación': 'carta de motivacion',
+  'carta de motivacion': 'carta de motivacion',
+  'carnet estudiantil': 'carnet',
+  'carnet': 'carnet',
+  'título de tercer nivel': 'titulo',
+  'titulo de tercer nivel': 'titulo',
+  'titulo': 'titulo',
+  'título de bachiller/universitario': 'titulo',
+  'titulo de bachiller/universitario': 'titulo'
+};
+
 export default function CursosCatalogoPage() {
   const [cursos, setCursos] = useState([]);
   const [misCursosEstudiante, setMisCursosEstudiante] = useState([]);
@@ -23,16 +41,23 @@ export default function CursosCatalogoPage() {
   const [feedback, setFeedback] = useState(null);
   const [modalCurso, setModalCurso] = useState(null);
   const [confirmingId, setConfirmingId] = useState(null);
+
+  // Validation States
+  const [userDocs, setUserDocs] = useState([]);
+  const [reqModal, setReqModal] = useState(null); // { curso, missingGeneral: [], missingSpecific: [] }
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+
   const { user } = useAuth();
   const nav = useNavigate();
 
+  // Filter States
   const [q, setQ] = useState('');
   const [horasFiltro, setHorasFiltro] = useState('');
   const [tipoFiltro, setTipoFiltro] = useState('');
   const [publicoFiltro, setPublicoFiltro] = useState('');
 
   const buildParams = () => {
-    const params = { q, inactivo: false };
+    const params = { q, inactivo: false, en_inscripcion: true };
     if (tipoFiltro) params.tipo = tipoFiltro;
     if (publicoFiltro) params.publico_objetivo = publicoFiltro;
 
@@ -48,12 +73,14 @@ export default function CursosCatalogoPage() {
     setLoading(true);
     try {
       const params = buildParams();
-      const [cursosData, cursosUsuario] = await Promise.all([
+      const [cursosData, cursosUsuario, docs] = await Promise.all([
         API.listCursos(params).catch(() => []),
-        API.getUserCourses().catch(() => [])
+        API.getUserCourses().catch(() => []),
+        API.getMyDocuments(user.token).catch(() => [])
       ]);
 
       setCursos(cursosData);
+      setUserDocs(docs);
       const inscritos = (cursosUsuario || [])
         .filter(c => c.rol === 'estudiante')
         .map(c => c.id_curso);
@@ -82,8 +109,62 @@ export default function CursosCatalogoPage() {
       });
       return;
     }
-    setModalCurso(curso);
-    setFeedback(null);
+
+    // 🟢 1. Validar Requisitos
+    API.getCurso(curso.id_curso, user.token).then(fullCurso => {
+      const reqs = fullCurso.requisitos || [];
+      const missingGen = [];
+      const missingSpec = [];
+
+      reqs.forEach(r => {
+        // Normalize name: lowercase, trim
+        const normalize = (str) => (str || '').toString().trim().toLowerCase();
+        const reqName = normalize(r.nombre_requisito);
+
+        // Resolve mapped code if exists (e.g. 'cédula de identidad' -> 'cedula')
+        // If no map key found, use the normalized name itself.
+        const mappedType = REQ_MAP[reqName] || reqName;
+
+        if (r.tipo === 'GENERAL') {
+          // General: id_curso IS NULL
+          // Find doc by looking for matches on EITHER the straight name OR the mapped code
+          const validDoc = userDocs.some(d => {
+            const docName = normalize(d.tipo_documento);
+            // Match against mapped type (more common) OR original normalized name
+            const isMatch = (docName === mappedType || docName === reqName) && !d.id_curso;
+            const isApproved = (d.estado || '').toLowerCase() === 'aprobado';
+            return isMatch && isApproved;
+          });
+
+          if (!validDoc) {
+            missingGen.push(r.nombre_requisito);
+          }
+
+        } else {
+          // Specific: id_curso matches
+          const validDoc = userDocs.some(d => {
+            const docName = normalize(d.tipo_documento);
+            // Exact match usually expected for specific docs created on the fly
+            const isMatch = (docName === reqName || docName === mappedType) && Number(d.id_curso) === Number(fullCurso.id_curso);
+            return isMatch;
+          });
+
+          if (!validDoc) {
+            missingSpec.push(r.nombre_requisito);
+          }
+        }
+      });
+
+      if (missingGen.length > 0 || missingSpec.length > 0) {
+        setReqModal({ curso: fullCurso, missingGeneral: missingGen, missingSpecific: missingSpec });
+      } else {
+        setModalCurso(fullCurso);
+        setFeedback(null);
+      }
+    }).catch(e => {
+      console.error(e);
+      setFeedback({ type: 'error', title: 'Error', message: 'No se pudieron verificar los requisitos.' });
+    });
   };
 
   const closeModal = () => {
@@ -133,14 +214,52 @@ export default function CursosCatalogoPage() {
         actions
       });
     } catch (error) {
-      setFeedback({
-        type: 'error',
-        title: 'No se pudo inscribir',
-        message: error.message || 'Ocurrió un error al procesar la inscripción.'
-      });
+      if (error.message?.includes('Faltan requisitos')) {
+        setFeedback({
+          type: 'error',
+          title: 'Requisitos Pendientes',
+          message: 'No se pudo completar la inscripción: Faltan requisitos.'
+        });
+      } else {
+        setFeedback({
+          type: 'error',
+          title: 'No se pudo inscribir',
+          message: error.message || 'Ocurrió un error al procesar la inscripción.'
+        });
+      }
     } finally {
       setConfirmingId(null);
       setModalCurso(null);
+    }
+  };
+
+  const handleUploadSpecific = async (reqName, file) => {
+    if (!reqModal || !file) return;
+    setUploadingDoc(true);
+    try {
+      const formData = new FormData();
+      formData.append('archivo', file);
+      // Use original name so it matches what we look for (unless we want to normalize on upload too?)
+      // Best to keep original name to match Requirement logic next time.
+      formData.append('tipo_documento', reqName);
+      formData.append('id_curso', reqModal.curso.id_curso);
+
+      await API.uploadDocument(formData, user.token);
+
+      // Refresh docs
+      const docs = await API.getMyDocuments(user.token);
+      setUserDocs(docs);
+
+      // Update local missing list to give immediate feedback
+      setReqModal(prev => ({
+        ...prev,
+        missingSpecific: prev.missingSpecific.filter(r => r !== reqName)
+      }));
+
+    } catch (e) {
+      alert('Error al subir documento: ' + (e.message || e));
+    } finally {
+      setUploadingDoc(false);
     }
   };
 
@@ -197,7 +316,7 @@ export default function CursosCatalogoPage() {
           : !usuarioCumplePublico
             ? 'No cumples el perfil'
             : !cumplePrerrequisito
-              ? 'Prerrequisito faltante'
+              ? `Prerrequisito faltante: ${curso.prerequisito_nombre || 'Desconocido'}`
               : !datesOk
                 ? dateReason
                 : null
@@ -243,8 +362,8 @@ export default function CursosCatalogoPage() {
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">
             <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${curso.tipo === 'Curso' ? 'bg-purple-50 text-purple-700 border-purple-200' :
-                curso.tipo === 'Taller' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                  'bg-blue-50 text-blue-700 border-blue-200'
+              curso.tipo === 'Taller' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                'bg-blue-50 text-blue-700 border-blue-200'
               }`}>
               {curso.tipo}
             </span>
@@ -301,8 +420,8 @@ export default function CursosCatalogoPage() {
             disabled={disabled}
             onClick={() => openModal(curso)}
             className={`w-full py-2.5 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 ${disabled
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20 hover:shadow-blue-600/30 transform hover:-translate-y-0.5'
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 text-white hover:bg-blue-700 shadow-lg shadow-blue-600/20 hover:shadow-blue-600/30 transform hover:-translate-y-0.5'
               }`}
           >
             {disabled ? 'No Disponible' : 'Inscribirse Ahora'}
@@ -533,6 +652,69 @@ export default function CursosCatalogoPage() {
                   {confirmingId ? 'Procesando...' : 'Confirmar'}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* REQUISITOS MODAL */}
+      {reqModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-lg w-full overflow-hidden p-6 animate-fade-in-up">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Requisitos para Inscripción</h3>
+            <p className="text-gray-600 mb-4">Para inscribirte en <strong>{reqModal.curso.nombre}</strong>, necesitas cumplir lo siguiente:</p>
+
+            {reqModal.missingGeneral.length > 0 && (
+              <div className="mb-4 bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+                <strong className="text-yellow-800 block mb-1">Documentos de Perfil (Pendientes o No Aprobados):</strong>
+                <ul className="list-disc list-inside text-sm text-yellow-700">
+                  {reqModal.missingGeneral.map(r => <li key={r}>{r}</li>)}
+                </ul>
+                <p className="text-xs text-yellow-800 mt-2">
+                  Ve a <button onClick={() => nav('/perfil')} className="underline font-bold">Mi Perfil</button> para subir estos documentos y espera su aprobación.
+                </p>
+              </div>
+            )}
+
+            {reqModal.missingSpecific.length > 0 && (
+              <div className="mb-4">
+                <strong className="text-gray-800 block mb-2">Documentos Específicos (Subir ahora):</strong>
+                <ul className="space-y-3">
+                  {reqModal.missingSpecific.map(r => (
+                    <li key={r} className="bg-gray-50 p-3 rounded-lg border border-gray-100">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-sm font-medium">{r}</span>
+                      </div>
+                      <input
+                        type="file"
+                        className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                        onChange={(e) => handleUploadSpecific(r, e.target.files[0])}
+                        disabled={uploadingDoc}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-2 mt-6">
+              <button
+                onClick={() => setReqModal(null)}
+                className="px-4 py-2 border rounded-lg hover:bg-gray-50"
+              >
+                Cerrar
+              </button>
+              {reqModal.missingGeneral.length === 0 && reqModal.missingSpecific.length === 0 && (
+                <button
+                  onClick={() => {
+                    setModalCurso(reqModal.curso); // Switch to Confirm Modal
+                    setReqModal(null);
+                  }}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-bold"
+                >
+                  Continuar
+                </button>
+              )}
             </div>
           </div>
         </div>

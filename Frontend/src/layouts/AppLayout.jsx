@@ -1,13 +1,16 @@
 // src/layouts/AppLayout.jsx
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
-import { HiOutlineUserGroup, HiOutlineBookOpen, HiOutlineClipboardList, HiOutlineCheckCircle, HiOutlineHome, HiOutlineLogout } from 'react-icons/hi';
+import { HiOutlineUserGroup, HiOutlineBookOpen, HiOutlineClipboardList, HiOutlineCheckCircle, HiOutlineHome, HiOutlineLogout, HiOutlineDocumentText, HiOutlineUser } from 'react-icons/hi';
 import { useAuth } from '../context/AuthContext';
 
 const allMenuItems = [
-  { key: 'dashboard', label: 'Dashboard', to: '/solicitudes/dashboard', icon: HiOutlineHome, roles: ['admin', 'develop', 'comite'] },
+  { key: 'dashboard-admin', label: 'Dashboard', to: '/dashboard', icon: HiOutlineHome, roles: ['admin'] },
+  { key: 'dashboard-sol', label: 'Dashboard', to: '/solicitudes/dashboard', icon: HiOutlineHome, roles: ['develop', 'comite'] },
+  { key: 'perfil', label: 'Mi Perfil', to: '/perfil', icon: HiOutlineUser, roles: ['usuario', 'docente'] },
   { key: 'catalogo', label: 'Cursos (Catálogo)', to: '/catalogo', icon: HiOutlineBookOpen, roles: ['usuario'] },
   { key: 'mis-cursos', label: 'Mis Cursos', to: '/mis-cursos', icon: HiOutlineClipboardList, roles: ['usuario', 'responsable'] },
-  { key: 'pagos', label: 'Aprobación Pagos', to: '/pagos', icon: HiOutlineCheckCircle, roles: ['admin'] },
+  { key: 'pagos', label: 'Aprobación Pagos', to: '/pagos', icon: HiOutlineCheckCircle, roles: ['responsable'] },
+  { key: 'validar-docs', label: 'Validación Requisitos', to: '/documentos/validar', icon: HiOutlineDocumentText, roles: ['responsable'] },
   { key: 'usuarios', label: 'Usuarios', to: '/usuarios', icon: HiOutlineUserGroup, roles: ['admin'] },
   { key: 'cursos', label: 'Cursos', to: '/cursos', icon: HiOutlineBookOpen, roles: ['admin', 'responsable'] },
   { key: 'inscripciones', label: 'Inscripciones', to: '/inscripciones', icon: HiOutlineClipboardList, roles: ['admin'] },

@@ -56,6 +56,10 @@ export default function FormCurso({ initial = {}, onSaved }) {
   const [cursoOptions, setCursoOptions] = useState([]); // {value: nombre, label: nombre}
   const [idPorNombre, setIdPorNombre] = useState({});   // {'Nombre': id}
 
+  // Requisitos States
+  const [requisitosGenerales, setRequisitosGenerales] = useState([]);
+  const [requisitosEspecificos, setRequisitosEspecificos] = useState([]);
+
   const [mensaje, setMensaje] = useState(null);
   const navigate = useNavigate();
 
@@ -63,7 +67,6 @@ export default function FormCurso({ initial = {}, onSaved }) {
   const isLocked = initial.estado === 'activo' || (initial.id_curso && initial.inactivo === false && initial.estado !== 'finalizado');
 
   // Determine if it is Admin Creating (Shell Mode)
-  // If !initial.id_curso (creating) AND user.rol === 'admin'
   const isCreation = !initial.id_curso;
   const isAdmin = user?.rol === 'admin';
   const isShellMode = isCreation && isAdmin;
@@ -108,14 +111,26 @@ export default function FormCurso({ initial = {}, onSaved }) {
 
   const [selectedEncargado, setSelectedEncargado] = useState(null);
 
-  // Initial load of Encargado Label
+  // Initial load of Encargado Label & Requirements
   useEffect(() => {
     if (initial.cedula_responsable && !selectedEncargado) {
       API.getUsuario(initial.cedula_responsable).then(u => {
         if (u) setSelectedEncargado({ value: u.cedula, label: `${u.cedula} - ${u.nombre} ${u.apellido}` });
       });
     }
-  }, [initial.cedula_responsable]);
+
+    // Populate Requisitos
+    if (initial.requisitos && Array.isArray(initial.requisitos)) {
+      const gens = [];
+      const specs = [];
+      initial.requisitos.forEach(r => {
+        if (r.tipo === 'GENERAL') gens.push(r.nombre_requisito);
+        else specs.push({ nombre: r.nombre_requisito });
+      });
+      setRequisitosGenerales(gens);
+      setRequisitosEspecificos(specs);
+    }
+  }, [initial.cedula_responsable, initial.requisitos]);
 
   const docenteOptions = useMemo(
     () => usuarios
@@ -202,7 +217,13 @@ export default function FormCurso({ initial = {}, onSaved }) {
         prerequisito: prereqId ?? null,
         publico_objetivo: Array.isArray(data.publico_objetivo)
           ? data.publico_objetivo
-          : publicoValue.map(o => o.value)
+          : publicoValue.map(o => o.value),
+
+        // Requisitos
+        requisitos: [
+          ...requisitosGenerales.map(r => ({ nombre_requisito: r, tipo: 'GENERAL', obligatorio: true })),
+          ...requisitosEspecificos.filter(r => r.nombre.trim()).map(r => ({ nombre_requisito: r.nombre, tipo: 'ESPECIFICO', obligatorio: true }))
+        ]
       };
 
       if (initial.id_curso) {
@@ -485,6 +506,70 @@ export default function FormCurso({ initial = {}, onSaved }) {
                 disabled={isLocked}
               />
               {errors.fecha_fin_inscripcion && <p className="text-xs text-red-600 mt-1">{errors.fecha_fin_inscripcion}</p>}
+            </div>
+          </div>
+
+          <div className="border-t border-gray-200 pt-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Requisitos del Curso</h3>
+
+            {/* Requisitos Generales */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Requisitos Generales (Documentos de Perfil)</label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {['Cédula de Identidad', 'Papeleta de votación', 'Título de Bachiller/Universitario', 'Carnet Estudiantil'].map((reqName) => (
+                  <label key={reqName} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50 border border-transparent hover:border-gray-200">
+                    <input
+                      type="checkbox"
+                      className="rounded text-blue-600 focus:ring-blue-500 h-4 w-4"
+                      checked={requisitosGenerales.includes(reqName)}
+                      onChange={(e) => {
+                        if (e.target.checked) setRequisitosGenerales([...requisitosGenerales, reqName]);
+                        else setRequisitosGenerales(requisitosGenerales.filter(r => r !== reqName));
+                      }}
+                      disabled={isLocked}
+                    />
+                    <span className="text-sm text-gray-700">{reqName}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Requisitos Específicos */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Requisitos Específicos (Subida obligatoria para este curso)</label>
+              {requisitosEspecificos.map((req, index) => (
+                <div key={index} className="flex gap-2 mb-2">
+                  <input
+                    className={inputClass}
+                    value={req.nombre}
+                    onChange={(e) => {
+                      const newReqs = [...requisitosEspecificos];
+                      newReqs[index].nombre = e.target.value;
+                      setRequisitosEspecificos(newReqs);
+                    }}
+                    placeholder="Nombre del requisito (ej. Carta de Motivación)"
+                    disabled={isLocked}
+                  />
+                  {!isLocked && (
+                    <button
+                      type="button"
+                      onClick={() => setRequisitosEspecificos(requisitosEspecificos.filter((_, i) => i !== index))}
+                      className="text-red-500 hover:bg-red-50 p-2 rounded"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+              {!isLocked && (
+                <button
+                  type="button"
+                  onClick={() => setRequisitosEspecificos([...requisitosEspecificos, { nombre: '' }])}
+                  className="text-sm text-blue-600 hover:underline flex items-center gap-1 mt-1"
+                >
+                  + Agregar Requisito Específico
+                </button>
+              )}
             </div>
           </div>
         </>

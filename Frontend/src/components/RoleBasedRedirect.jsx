@@ -17,13 +17,15 @@ export default function RoleBasedRedirect() {
     case 'responsable':
       return <Navigate to="/cursos" replace />;
       
-    // ✅ Agrega 'estudiante' aquí
     case 'usuario':
     case 'estudiante': 
       return <Navigate to="/catalogo" replace />;
+
+    // ✅ NUEVO: Caso para el comité
+    case 'comite':
+      return <Navigate to="/solicitudes/dashboard" replace />;
       
     default:
-      // ⚠️ ¡CRÍTICO! Nunca mandes a "/" aquí, o crearás un bucle infinito.
       // Mándalo siempre a una ruta interna segura.
       return <Navigate to="/catalogo" replace />; 
   }

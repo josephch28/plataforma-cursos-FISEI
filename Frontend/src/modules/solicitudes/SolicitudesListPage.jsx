@@ -82,23 +82,16 @@ export default function SolicitudesListPage() {
 
       let currentFilters = { ...filters };
 
+      // ... (toda tu lógica de filtros de roles se queda igual) ...
       if (user?.rol === 'comite') {
-        if (activeTab === 'pendientes') {
-          currentFilters.estado = 'pendiente';
-        } else if (activeTab === 'aprobadas') {
-          currentFilters.estado = 'aprobado';
-        } else if (activeTab === 'realizadas') {
-          currentFilters.estado = 'realizado';
-        } else if (activeTab === 'rechazadas') {
-          currentFilters.estado = 'rechazado';
-        }
+        if (activeTab === 'pendientes') currentFilters.estado = 'pendiente';
+        else if (activeTab === 'aprobadas') currentFilters.estado = 'aprobado';
+        else if (activeTab === 'realizadas') currentFilters.estado = 'realizado';
+        else if (activeTab === 'rechazadas') currentFilters.estado = 'rechazado';
       } else if (user?.rol === 'develop') {
         currentFilters.asignado_a = user.cedula;
-        if (activeTab === 'mis_pendientes') {
-          currentFilters.estado = 'aprobado';
-        } else if (activeTab === 'historial') {
-          currentFilters.estado = 'realizado,verificado';
-        }
+        if (activeTab === 'mis_pendientes') currentFilters.estado = 'aprobado';
+        else if (activeTab === 'historial') currentFilters.estado = 'realizado,verificado';
       }
 
       const cleanFilters = Object.fromEntries(
@@ -106,6 +99,13 @@ export default function SolicitudesListPage() {
       );
 
       const data = await API.listSolicitudes(cleanFilters);
+
+      // ✅ FIX DEFINITIVO: Ordenar por ID (El ID más alto es el más reciente)
+      // Usar fecha_solicitud fallaba porque no tiene hora.
+      if (Array.isArray(data)) {
+        data.sort((a, b) => b.id - a.id); 
+      }
+
       setSolicitudes(data);
     } catch (error) {
       console.error('Error al cargar solicitudes:', error);

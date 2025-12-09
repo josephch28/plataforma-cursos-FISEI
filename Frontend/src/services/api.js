@@ -158,6 +158,14 @@ export const API = {
     const res = await fetch(`/api/inscripciones/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(data) });
     return await handleResponse(res);
   },
+  async batchUpdateInscripciones(actualizaciones) {
+    const res = await fetch(`/api/inscripciones/batch`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ actualizaciones })
+    });
+    return await handleResponse(res);
+  },
   async deleteInscripcion(id) {
     const res = await fetch(`/api/inscripciones/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
     return await handleResponse(res);

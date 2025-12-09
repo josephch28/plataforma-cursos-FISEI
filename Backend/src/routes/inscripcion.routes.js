@@ -12,6 +12,7 @@ router.get('/mis-cursos', auth(), ctrl.listByDocente);
 router.post('/', auth(), validate(createInscripcion), ctrl.create);
 router.put('/:id', auth(), validate(updateInscripcion), ctrl.update);
 router.delete('/:id', auth('admin'), ctrl.remove);
+router.post('/batch', auth(), ctrl.batchUpdate);
 router.get('/:id', auth(), ctrl.getOne);
 
 module.exports = router;

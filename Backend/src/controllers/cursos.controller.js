@@ -303,21 +303,29 @@ exports.finalize = async (req, res) => {
 
     // 3. Obtener estudiantes aprobados sin certificado previo
     // (Asumimos que si ya tienen certificado, no generamos otro, o regeneramos? Mejor ignorar duplicados)
+    // 2. Establecer notas faltantes a 0
+    await pool.query('UPDATE inscripcion SET nota_final = 0 WHERE id_curso = ? AND nota_final IS NULL', [req.params.id]);
+    await pool.query('UPDATE inscripcion SET asistencia = 0 WHERE id_curso = ? AND asistencia IS NULL', [req.params.id]);
+
+    // 3. Obtener estudiantes aprobados sin certificado previo
     const [inscripciones] = await pool.query(`
         SELECT i.id_inscripcion, u.nombre, u.apellido
         FROM inscripcion i
-        JOIN usuario u ON i.cedula_estudiante = u.cedula
+        JOIN usuario u ON i.cedula_usuario = u.cedula
         WHERE i.id_curso = ? 
           AND i.estado = 'aprobado'
-          AND NOT EXISTS (SELECT 1 FROM certificado c WHERE c.id_inscripcion = i.id_inscripcion)
+          AND NOT EXISTS (SELECT 1 FROM certificados c WHERE c.id_inscripcion = i.id_inscripcion)
     `, [req.params.id]);
 
     // 4. Generar registros de Certificados
     let generated = 0;
+    const crypto = require('crypto');
+
     for (const insc of inscripciones) {
-      const code = uuidv4();
+      // Generar código único: CURSO-CEDULA-RANDOM
+      const code = crypto.randomBytes(8).toString('hex').toUpperCase();
       await pool.query(
-        'INSERT INTO certificado (id_inscripcion, codigo_verificacion) VALUES (?, ?)',
+        'INSERT INTO certificados (id_inscripcion, codigo_verificacion, fecha_emision) VALUES (?, ?, NOW())',
         [insc.id_inscripcion, code]
       );
       generated++;

@@ -176,6 +176,8 @@ exports.getUserCourses = async (req, res) => {
                 c.es_pagado,
                 c.costo,
                 i.estado,
+                i.nota_final,
+                i.asistencia,
                 p.id_pago,
                 p.aprobado AS pago_aprobado,
                 p.metodo_pago,
@@ -189,7 +191,12 @@ exports.getUserCourses = async (req, res) => {
                   WHERE ud.cedula_usuario = i.cedula_usuario 
                     AND ud.id_curso = c.id_curso 
                     AND ud.estado = 'rechazado'
-                ) as rejected_docs
+                ) as rejected_docs,
+                (
+                  SELECT codigo_verificacion 
+                  FROM certificados cert 
+                  WHERE cert.id_inscripcion = i.id_inscripcion
+                ) as certificado_codigo
             FROM inscripcion i
             JOIN curso c ON i.id_curso = c.id_curso
             LEFT JOIN pago p ON i.id_inscripcion = p.id_inscripcion

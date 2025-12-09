@@ -298,52 +298,160 @@ exports.update = async (req, res) => {
   const { id } = req.params;
   const b = req.validated || req.body;
   try {
+    const crypto = require('crypto');
     const cedula = req.user?.cedula;
     const rol = req.user?.rol;
 
-    // 🟢 FIX 1: Manejar valores nulos para campos numéricos (nota_final, asistencia). 
-    // Si la cadena está vacía (''), se establece a null para la base de datos.
-    const notaFinal = b.nota_final === '' ? null : b.nota_final;
-    const asistencia = b.asistencia === '' ? null : b.asistencia;
-    const estado = b.estado;
+    const notaFinal = b.nota_final === '' ? null : Number(b.nota_final);
+    const asistencia = b.asistencia === '' ? null : Number(b.asistencia);
+    let estado = b.estado;
 
     if (!cedula) return res.status(401).json({ message: 'Sesión inválida' });
 
-    // La lógica de permisos de Docentes y Responsables solo aplica si NO es admin
+    // 1. Obtener datos del curso e inscripción para validar reglas y permisos
+    const [rows] = await pool.query(
+      `SELECT i.id_curso, c.cedula_docente, c.cedula_responsable, 
+              c.nota_aprobacion, c.min_asistencia, c.estado,
+              (SELECT 1 FROM curso_encargado ce WHERE ce.id_curso = c.id_curso AND ce.cedula_encargado = ?) as is_encargado
+       FROM inscripcion i
+       JOIN curso c ON c.id_curso = i.id_curso
+       WHERE i.id_inscripcion = ?`,
+      [cedula, id]
+    );
+
+    if (!rows.length) return res.status(404).json({ message: 'Inscripción no encontrada' });
+    const cursoData = rows[0];
+
+    if (cursoData.estado === 'finalizado') {
+      return res.status(400).json({ message: 'El curso está finalizado. No se puede modificar.' });
+    }
+
+    // 2. Verificar Permisos
     if (rol !== 'admin') {
+      const isDocente = cursoData.cedula_docente === cedula;
+      const isEncargado = !!cursoData.is_encargado;
 
-      // Verificación de permisos: Docente Principal, Responsable o Encargado.
-      const [rows] = await pool.query(
-        `SELECT 1
-           FROM inscripcion i
-           JOIN curso c ON c.id_curso = i.id_curso
-          WHERE i.id_inscripcion = ?
-            AND (c.cedula_docente = ?              -- Es el docente principal
-            OR c.cedula_responsable = ?            -- Es el responsable principal
-            OR EXISTS (SELECT 1 FROM curso_encargado ce WHERE ce.id_curso = i.id_curso AND ce.cedula_encargado = ?))`,
-        // Se pasan los parámetros en el orden correcto para la consulta:
-        [id, cedula, cedula, cedula]
-      );
-
-      if (!rows.length) {
+      if (!isDocente && !isEncargado) {
         return res.status(403).json({ message: 'No autorizado para calificar este curso' });
       }
     }
 
-    // 🟢 Ejecución de la actualización con los valores seguros
+    // 3. Automate Status
+    const minNota = cursoData.nota_aprobacion ?? 7.0;
+    const minAsis = cursoData.min_asistencia ?? 75;
+
+    if (notaFinal !== null && asistencia !== null && !estado) { // Only override if estado not explicitly sent (or always?)
+      // Usually update request sends { nota, asistencia }.
+      if (notaFinal >= minNota && asistencia >= minAsis) {
+        estado = 'aprobado';
+      } else {
+        estado = 'reprobado';
+      }
+    } else if (notaFinal !== null && asistencia !== null && estado) {
+      // If user sent state manually, respect it? Or force rules?
+      // User said "automáticamente". 
+      // If I force rules, they can't override.
+      // I'll force rules for consistency with the request.
+      if (notaFinal >= minNota && asistencia >= minAsis) {
+        estado = 'aprobado';
+      } else {
+        estado = 'reprobado';
+      }
+    }
+
+    // 4. Update
     await pool.query(
       'UPDATE inscripcion SET nota_final=?, asistencia=?, estado=? WHERE id_inscripcion=?',
-      [notaFinal, asistencia, estado, id] // Usamos notaFinal y asistencia que pueden ser null
+      [notaFinal, asistencia, estado || 'inscrito', id]
     );
+
+    // 5. Generate Certificate (Moved to Finalize Course)
+
     res.json({ message: 'Evaluación actualizada correctamente.' });
 
   } catch (err) {
     console.error('Error FATAL al actualizar inscripción:', err);
-    // 🟢 FIX 2: Devolver un error más detallado en la respuesta.
     res.status(500).json({
       error: 'Error al actualizar inscripción',
       details: err.sqlMessage || err.message
     });
+  }
+};
+
+// Actualización masiva de calificaciones (Docente/Responsable)
+exports.batchUpdate = async (req, res) => {
+  const { actualizaciones } = req.body; // Array de { id_inscripcion, nota_final, asistencia }
+  const cedula = req.user?.cedula;
+  const rol = req.user?.rol;
+
+  if (!cedula) return res.status(401).json({ message: 'Sesión inválida' });
+  if (!Array.isArray(actualizaciones) || actualizaciones.length === 0) {
+    return res.status(400).json({ message: 'No hay datos para actualizar.' });
+  }
+  try {
+    // 1. Verificar Permisos
+    const firstId = actualizaciones[0].id_inscripcion;
+    const [rows] = await pool.query('SELECT id_curso FROM inscripcion WHERE id_inscripcion = ?', [firstId]);
+
+    if (!rows.length) return res.status(404).json({ message: 'Inscripción no encontrada' });
+    const id_curso = rows[0].id_curso;
+
+    // Check course status 
+    const [c] = await pool.query('SELECT estado FROM curso WHERE id_curso = ?', [id_curso]);
+    if (c[0]?.estado === 'finalizado') {
+      return res.status(400).json({ message: 'El curso está finalizado. No se pueden modificar notas.' });
+    }
+
+    if (rol !== 'admin') {
+      const [auth] = await pool.query(
+        `SELECT 1 FROM curso c 
+             LEFT JOIN curso_encargado ce ON ce.id_curso = c.id_curso
+             WHERE c.id_curso = ? 
+               AND (c.cedula_docente = ? OR ce.cedula_encargado = ?)`,
+        [id_curso, cedula, cedula]
+      );
+      if (!auth.length) {
+        return res.status(403).json({ message: 'No autorizado para calificar este curso.' });
+      }
+    }
+
+    // 2. Perform Updates
+    const crypto = require('crypto');
+    const [cursoData] = await pool.query('SELECT nota_aprobacion, min_asistencia FROM curso WHERE id_curso = ?', [id_curso]);
+    const minNota = cursoData[0]?.nota_aprobacion ?? 7.0;
+    const minAsis = cursoData[0]?.min_asistencia ?? 75;
+
+    await Promise.all(actualizaciones.map(async (item) => {
+      const nota = item.nota_final === '' || item.nota_final === undefined ? null : Number(item.nota_final);
+      const asistencia = item.asistencia === '' || item.asistencia === undefined ? null : Number(item.asistencia);
+
+      let nuevoEstado = item.estado; // Default to incoming or current
+      // If we don't have item.estado passed (it's undefined from frontend usually? table doesn't edit state directly), fetch current?
+      // Actually batchUpdate usually receives just grades.
+      // So we should decide state here. 'aprobado' vs 'reprobado' vs 'inscrito'.
+
+      // Automatic Status Logic
+      if (nota !== null && asistencia !== null) {
+        if (nota >= minNota && asistencia >= minAsis) {
+          nuevoEstado = 'aprobado';
+        } else {
+          nuevoEstado = 'reprobado';
+        }
+      }
+
+      await pool.query(
+        'UPDATE inscripcion SET nota_final = ?, asistencia = ?, estado = ? WHERE id_inscripcion = ?',
+        [nota, asistencia, nuevoEstado || 'inscrito', item.id_inscripcion]
+      );
+
+      // Certificate Generation moved to Course Finalization (user request)
+    }));
+
+    res.json({ message: 'Calificaciones guardadas exitosamente.' });
+
+  } catch (err) {
+    console.error('Error en batchUpdate:', err);
+    res.status(500).json({ error: 'Error al guardar calificaciones.', details: err.message });
   }
 };
 

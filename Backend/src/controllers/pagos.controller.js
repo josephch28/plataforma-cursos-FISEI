@@ -17,22 +17,22 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ 
-    storage,
-    fileFilter: (req, file, cb) => {
-        if (file.mimetype === 'application/pdf' || file.mimetype === 'image/jpeg' || file.mimetype === 'image/png') {
-            cb(null, true);
-        } else {
-            cb(new Error('Formato de archivo no soportado. Use PDF, JPG o PNG.'), false);
-        }
+const upload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype === 'application/pdf' || file.mimetype === 'image/jpeg' || file.mimetype === 'image/png') {
+      cb(null, true);
+    } else {
+      cb(new Error('Formato de archivo no soportado. Use PDF, JPG o PNG.'), false);
     }
+  }
 }).single('comprobante'); // El nombre del campo en el formulario es 'comprobante'
 
 // 1. Subir comprobante (Usuario)
 exports.uploadComprobante = (req, res) => {
   const { idInscripcion } = req.params;
   const user = req.user;
-  
+
   upload(req, res, async (err) => {
     if (err) {
       return res.status(400).json({ message: err.message || 'Error al subir el archivo' });
@@ -84,16 +84,16 @@ exports.uploadComprobante = (req, res) => {
         'UPDATE pago SET comprobante_pdf = ?, fecha_pago = NOW(), aprobado = 0 WHERE id_pago = ?',
         [filePath, pagos[0].id_pago]
       );
-      
-      return res.status(200).json({ 
-          message: 'Comprobante subido exitosamente. Pendiente de aprobación.',
-          filePath: `/uploads/${filePath}`
+
+      return res.status(200).json({
+        message: 'Comprobante subido exitosamente. Pendiente de aprobación.',
+        filePath: `/uploads/${filePath}`
       });
-      
+
     } catch (dbError) {
       console.error('Error DB al subir comprobante:', dbError);
       if (req.file?.path && fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path); 
+        fs.unlinkSync(req.file.path);
       }
       return res.status(500).json({ message: 'Error al actualizar registro de pago' });
     }
@@ -141,8 +141,8 @@ exports.getOrdenByInscripcion = async (req, res) => {
 
 // 3. Listar pagos pendientes (Admin)
 exports.listPending = async (req, res) => {
-    try {
-        const [rows] = await pool.query(`
+  try {
+    const [rows] = await pool.query(`
             SELECT 
                 p.id_pago, p.monto, p.metodo_pago, p.numero_orden,
                 p.comprobante_pdf, p.fecha_pago,
@@ -153,37 +153,37 @@ exports.listPending = async (req, res) => {
             WHERE p.aprobado = 0
             ORDER BY p.fecha_pago ASC
         `);
-        res.json(rows);
-    } catch (error) {
-        res.status(500).json({ message: 'Error al listar pagos pendientes' });
-    }
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ message: 'Error al listar pagos pendientes' });
+  }
 };
 
 // 4. Aprobar pago (Admin)
 exports.approvePayment = async (req, res) => {
-    const { idPago } = req.params;
-    const adminCedula = req.user?.cedula || null;
-    try {
-        // 1. Obtener la inscripción asociada
-        const [pagos] = await pool.query('SELECT id_inscripcion FROM pago WHERE id_pago = ?', [idPago]);
-        if (pagos.length === 0) {
-            return res.status(404).json({ message: 'Pago no encontrado' });
-        }
-        const idInscripcion = pagos[0].id_inscripcion;
-        
-        // 2. Marcar el pago como aprobado
-        await pool.query(
-          'UPDATE pago SET aprobado = 1, aprobado_por = ?, fecha_aprobacion = NOW() WHERE id_pago = ?',
-          [adminCedula, idPago]
-        );
-
-        // 3. Marcar la inscripción como 'pagado'
-        await pool.query('UPDATE inscripcion SET estado = "pagado" WHERE id_inscripcion = ?', [idInscripcion]);
-        
-        res.json({ message: 'Pago aprobado y estado de inscripción actualizado a PAGADO' });
-
-    } catch (error) {
-        console.error('Error al aprobar pago:', error);
-        res.status(500).json({ message: 'Error al aprobar el pago' });
+  const { idPago } = req.params;
+  const approverCedula = req.user?.cedula || null;
+  try {
+    // 1. Obtener la inscripción asociada
+    const [pagos] = await pool.query('SELECT id_inscripcion FROM pago WHERE id_pago = ?', [idPago]);
+    if (pagos.length === 0) {
+      return res.status(404).json({ message: 'Pago no encontrado' });
     }
+    const idInscripcion = pagos[0].id_inscripcion;
+
+    // 2. Marcar el pago como aprobado
+    await pool.query(
+      'UPDATE pago SET aprobado = 1, aprobado_por = ?, fecha_aprobacion = NOW() WHERE id_pago = ?',
+      [approverCedula, idPago]
+    );
+
+    // 3. Marcar la inscripción como 'pagado'
+    await pool.query('UPDATE inscripcion SET estado = "pagado" WHERE id_inscripcion = ?', [idInscripcion]);
+
+    res.json({ message: 'Pago aprobado y estado de inscripción actualizado a PAGADO' });
+
+  } catch (error) {
+    console.error('Error al aprobar pago:', error);
+    res.status(500).json({ message: 'Error al aprobar el pago' });
+  }
 };

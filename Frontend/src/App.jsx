@@ -23,6 +23,8 @@ import CursosCatalogoPage from './modules/cursos/CursosCatalogoPage'; // 🆕 Im
 import PagoSubirPage from './modules/pagos/PagoSubirPage';
 import AprobacionPagosPage from './modules/pagos/AprobacionPagosPage';
 import MisCursosPage from './modules/misCursos/MisCursosPage';
+import PerfilPage from './modules/usuarios/PerfilPage';
+import ValidarDocumentosPage from './modules/documentos/ValidarDocumentosPage';
 
 export default function App() {
   // const auth = { rol: 'admin', cedula: '0101010101' }; // <-- ¡ELIMINADO! Ya no necesitamos esto.
@@ -38,6 +40,11 @@ export default function App() {
             {/* Rutas públicas (requieren autenticación pero no rol específico) */}
             <Route path="/pago/:idInscripcion/subir" element={<PagoSubirPage />} />
 
+            {/* Perfil (Restringido para Admin y Responsable) */}
+            <Route element={<RoleProtectedRoute allowedRoles={['usuario', 'docente', 'develop', 'comite']} />}>
+              <Route path="/perfil" element={<PerfilPage />} />
+            </Route>
+
             {/* Rutas para Admin y Develop */}
             <Route element={<RoleProtectedRoute allowedRoles={['admin', 'develop']} />}>
               <Route path="/dashboard" element={<DashboardPage />} />
@@ -45,11 +52,16 @@ export default function App() {
 
             {/* Rutas solo para Admin */}
             <Route element={<RoleProtectedRoute allowedRoles={['admin']} />}>
-              <Route path="/pagos" element={<AprobacionPagosPage />} />
               <Route path="/usuarios" element={<UsuariosListPage />} />
               <Route path="/usuarios/nuevo" element={<UsuariosCreatePage />} />
               <Route path="/usuarios/:cedula/editar" element={<UsuariosEditPage />} />
               <Route path="/inscripciones" element={<EvaluacionesListPage />} />
+            </Route>
+
+            {/* Rutas solo para Responsable */}
+            <Route element={<RoleProtectedRoute allowedRoles={['responsable']} />}>
+              <Route path="/pagos" element={<AprobacionPagosPage />} />
+              <Route path="/documentos/validar" element={<ValidarDocumentosPage />} />
             </Route>
 
             {/* Rutas para Admin y Responsable (Gestión de Cursos) */}

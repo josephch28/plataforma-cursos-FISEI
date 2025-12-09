@@ -158,6 +158,14 @@ export const API = {
     const res = await fetch(`/api/inscripciones/${id}`, { method: 'PUT', headers: getAuthHeaders(), body: JSON.stringify(data) });
     return await handleResponse(res);
   },
+  async batchUpdateInscripciones(actualizaciones) {
+    const res = await fetch(`/api/inscripciones/batch`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ actualizaciones })
+    });
+    return await handleResponse(res);
+  },
   async deleteInscripcion(id) {
     const res = await fetch(`/api/inscripciones/${id}`, { method: 'DELETE', headers: getAuthHeaders() });
     return await handleResponse(res);
@@ -254,6 +262,46 @@ export const API = {
       method: 'PUT',
       headers: getAuthHeaders(),
       body: JSON.stringify({})
+    });
+    return await handleResponse(res);
+  },
+
+  // ===================== Documentos =====================
+  async uploadDocument(data) {
+    const token = localStorage.getItem('token');
+    let formData;
+
+    if (data instanceof FormData) {
+      formData = data;
+    } else {
+      formData = new FormData();
+      Object.keys(data).forEach(key => {
+        formData.append(key, data[key]);
+      });
+    }
+
+    const res = await fetch(`/api/documentos/upload`, {
+      method: 'POST',
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+      body: formData
+    });
+    return await handleResponse(res);
+  },
+  async getMyDocuments() {
+    const res = await fetch(`/api/documentos/mine`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
+  async getPendingDocuments() {
+    const res = await fetch(`/api/documentos/pending`, { headers: getAuthHeaders() });
+    return await handleResponse(res);
+  },
+  async reviewDocument(id, result) { // result: { estado: 'aprobado'|'rechazado', observacion }
+    const res = await fetch(`/api/documentos/review/${id}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify(result)
     });
     return await handleResponse(res);
   }

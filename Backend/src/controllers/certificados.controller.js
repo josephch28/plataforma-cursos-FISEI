@@ -11,7 +11,7 @@ exports.download = async (req, res) => {
                cr.nombre as curso_nombre, cr.horas, cr.fecha_inicio, cr.fecha_fin
         FROM certificados c
         JOIN inscripcion i ON c.id_inscripcion = i.id_inscripcion
-        JOIN usuario u ON i.cedula_estudiante = u.cedula
+        JOIN usuario u ON i.cedula_usuario = u.cedula
         JOIN curso cr ON i.id_curso = cr.id_curso
         WHERE c.codigo_verificacion = ?
     `, [codigo]);

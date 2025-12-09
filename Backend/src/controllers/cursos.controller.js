@@ -43,6 +43,11 @@ exports.list = async (req, res) => {
     if (costo_min) { filters.push('c.costo >= ?'); params.push(parseFloat(costo_min)); }
     if (costo_max) { filters.push('c.costo <= ?'); params.push(parseFloat(costo_max)); }
 
+    if (req.query.en_inscripcion === 'true') {
+      filters.push('(c.fecha_inicio_inscripcion IS NULL OR c.fecha_inicio_inscripcion <= NOW())');
+      filters.push('(c.fecha_fin_inscripcion IS NULL OR c.fecha_fin_inscripcion >= NOW())');
+    }
+
     const where = filters.length ? `WHERE ${filters.join(' AND ')}` : '';
     const [rows] = await pool.query(
       `SELECT c.*,
@@ -61,10 +66,93 @@ exports.list = async (req, res) => {
   }
 };
 
+exports.update = async (req, res) => {
+  try {
+    const b = req.validated || req.body;
+    console.log('UPDATE payload:', b, 'id:', req.params.id);
+
+    const cedula = req.user?.cedula;
+    const rol = req.user?.rol;
+    if (!cedula) return res.status(401).json({ message: 'Sesión inválida' });
+
+    // Admin puede actualizar cualquier curso, otros sólo si son responsables del curso
+    if (rol !== 'admin') {
+      const [[curso]] = await pool.query(
+        'SELECT cedula_responsable FROM curso WHERE id_curso = ?',
+        [req.params.id]
+      );
+
+      if (!curso || curso.cedula_responsable !== cedula) {
+        return res.status(403).json({ message: 'No autorizado para editar este curso' });
+      }
+    }
+
+    let publicoCSV = b.publico_objetivo;
+    if (Array.isArray(publicoCSV)) publicoCSV = publicoCSV.join(',');
+    else if (typeof publicoCSV === 'object' && publicoCSV !== null) publicoCSV = Object.values(publicoCSV).join(',');
+
+    if (b.cedula_responsable) {
+      const [uResp] = await pool.query('SELECT rol FROM usuario WHERE cedula = ?', [b.cedula_responsable]);
+      if (!uResp.length || uResp[0].rol !== 'responsable') {
+        return res.status(400).json({ message: 'Validación fallida', errors: ['cedula_responsable debe tener rol responsable'] });
+      }
+    }
+
+    if (b.cedula_docente) {
+      const [uDoc] = await pool.query('SELECT cedula FROM usuario WHERE cedula = ?', [b.cedula_docente]);
+      if (!uDoc.length) {
+        return res.status(400).json({ message: 'Validación fallida', errors: ['cedula_docente no corresponde a un usuario válido'] });
+      }
+    }
+
+    const fields = [];
+    const params = [];
+    const allowed = [
+      'cedula_responsable', 'cedula_docente', 'nombre', 'descripcion', 'tipo', 'horas', 'es_pagado', 'costo',
+      'prerequisito', 'publico_objetivo', 'nota_aprobacion', 'requiere_asistencia', 'min_asistencia', 'fecha_inicio', 'fecha_fin',
+      'fecha_inicio_inscripcion', 'fecha_fin_inscripcion'
+    ];
+
+    for (const k of allowed) {
+      if (k in b) {
+        fields.push(`${k} = ?`);
+        params.push(k === 'publico_objetivo' ? (publicoCSV ?? null) : (b[k] ?? null));
+      }
+    }
+
+    if (fields.length > 0) {
+      params.push(req.params.id);
+      await pool.query(`UPDATE curso SET ${fields.join(', ')} WHERE id_curso = ?`, params);
+    }
+
+    const [row] = await pool.query('SELECT * FROM curso WHERE id_curso = ?', [req.params.id]);
+
+    // Handle Requirements Update
+    if (b.requisitos && Array.isArray(b.requisitos)) {
+      await pool.query('DELETE FROM curso_requisito WHERE id_curso = ?', [req.params.id]);
+      for (const r of b.requisitos) {
+        await pool.query(
+          'INSERT INTO curso_requisito (id_curso, nombre_requisito, descripcion, obligatorio, tipo) VALUES (?,?,?,?,?)',
+          [req.params.id, r.nombre_requisito, r.descripcion || '', r.obligatorio ?? true, r.tipo || 'ESPECIFICO']
+        );
+      }
+    }
+
+    res.json(row[0]);
+  } catch (error) {
+    console.error('UPDATE error:', error);
+    return res.status(500).json({ message: 'Error al actualizar curso', error: String(error?.sqlMessage || error?.message || error) });
+  }
+};
+
 exports.get = async (req, res) => {
   try {
     const [rows] = await pool.query('SELECT * FROM curso WHERE id_curso = ?', [req.params.id]);
     if (!rows.length) return res.status(404).json({ message: 'Curso no encontrado' });
+
+    const [reqs] = await pool.query('SELECT * FROM curso_requisito WHERE id_curso = ?', [req.params.id]);
+    rows[0].requisitos = reqs;
+
     res.json(rows[0]);
   } catch (error) {
     console.error('GET error:', error);
@@ -133,79 +221,23 @@ exports.create = async (req, res) => {
       ]
     );
 
-    const [row] = await pool.query('SELECT * FROM curso WHERE id_curso = ?', [result.insertId]);
+    const idCurso = result.insertId;
+
+    // Handle Requirements Insert
+    if (b.requisitos && Array.isArray(b.requisitos)) {
+      for (const r of b.requisitos) {
+        await pool.query(
+          'INSERT INTO curso_requisito (id_curso, nombre_requisito, descripcion, obligatorio, tipo) VALUES (?,?,?,?,?)',
+          [idCurso, r.nombre_requisito, r.descripcion || '', r.obligatorio ?? true, r.tipo || 'ESPECIFICO']
+        );
+      }
+    }
+
+    const [row] = await pool.query('SELECT * FROM curso WHERE id_curso = ?', [idCurso]);
     res.status(201).json(row[0]);
   } catch (error) {
     console.error('CREATE error:', error);
     return res.status(500).json({ message: 'Error al crear curso', error: String(error?.sqlMessage || error?.message || error) });
-  }
-};
-
-exports.update = async (req, res) => {
-  try {
-    const b = req.validated || req.body;
-    console.log('UPDATE payload:', b, 'id:', req.params.id);
-
-    const cedula = req.user?.cedula;
-    const rol = req.user?.rol;
-    if (!cedula) return res.status(401).json({ message: 'Sesión inválida' });
-
-    // Admin puede actualizar cualquier curso, otros sólo si son responsables del curso
-    if (rol !== 'admin') {
-      const [[curso]] = await pool.query(
-        'SELECT cedula_responsable FROM curso WHERE id_curso = ?',
-        [req.params.id]
-      );
-
-      if (!curso || curso.cedula_responsable !== cedula) {
-        return res.status(403).json({ message: 'No autorizado para editar este curso' });
-      }
-    }
-
-    let publicoCSV = b.publico_objetivo;
-    if (Array.isArray(publicoCSV)) publicoCSV = publicoCSV.join(',');
-    else if (typeof publicoCSV === 'object' && publicoCSV !== null) publicoCSV = Object.values(publicoCSV).join(',');
-
-    if (b.cedula_responsable) {
-      const [uResp] = await pool.query('SELECT rol FROM usuario WHERE cedula = ?', [b.cedula_responsable]);
-      if (!uResp.length || uResp[0].rol !== 'responsable') {
-        return res.status(400).json({ message: 'Validación fallida', errors: ['cedula_responsable debe tener rol responsable'] });
-      }
-    }
-
-    if (b.cedula_docente) {
-      const [uDoc] = await pool.query('SELECT cedula FROM usuario WHERE cedula = ?', [b.cedula_docente]);
-      if (!uDoc.length) {
-        return res.status(400).json({ message: 'Validación fallida', errors: ['cedula_docente no corresponde a un usuario válido'] });
-      }
-    }
-
-    const fields = [];
-    const params = [];
-    const allowed = [
-      'cedula_responsable', 'cedula_docente', 'nombre', 'descripcion', 'tipo', 'horas', 'es_pagado', 'costo',
-      'cedula_responsable', 'cedula_docente', 'nombre', 'descripcion', 'tipo', 'horas', 'es_pagado', 'costo',
-      'prerequisito', 'publico_objetivo', 'nota_aprobacion', 'requiere_asistencia', 'min_asistencia', 'fecha_inicio', 'fecha_fin',
-      'fecha_inicio_inscripcion', 'fecha_fin_inscripcion'
-    ];
-
-    for (const k of allowed) {
-      if (k in b) {
-        fields.push(`${k} = ?`);
-        params.push(k === 'publico_objetivo' ? (publicoCSV ?? null) : (b[k] ?? null));
-      }
-    }
-
-    if (!fields.length) return res.status(400).json({ message: 'Nada para actualizar' });
-
-    params.push(req.params.id);
-    await pool.query(`UPDATE curso SET ${fields.join(', ')} WHERE id_curso = ?`, params);
-
-    const [row] = await pool.query('SELECT * FROM curso WHERE id_curso = ?', [req.params.id]);
-    res.json(row[0]);
-  } catch (error) {
-    console.error('UPDATE error:', error);
-    return res.status(500).json({ message: 'Error al actualizar curso', error: String(error?.sqlMessage || error?.message || error) });
   }
 };
 
@@ -271,21 +303,29 @@ exports.finalize = async (req, res) => {
 
     // 3. Obtener estudiantes aprobados sin certificado previo
     // (Asumimos que si ya tienen certificado, no generamos otro, o regeneramos? Mejor ignorar duplicados)
+    // 2. Establecer notas faltantes a 0
+    await pool.query('UPDATE inscripcion SET nota_final = 0 WHERE id_curso = ? AND nota_final IS NULL', [req.params.id]);
+    await pool.query('UPDATE inscripcion SET asistencia = 0 WHERE id_curso = ? AND asistencia IS NULL', [req.params.id]);
+
+    // 3. Obtener estudiantes aprobados sin certificado previo
     const [inscripciones] = await pool.query(`
         SELECT i.id_inscripcion, u.nombre, u.apellido
         FROM inscripcion i
-        JOIN usuario u ON i.cedula_estudiante = u.cedula
+        JOIN usuario u ON i.cedula_usuario = u.cedula
         WHERE i.id_curso = ? 
           AND i.estado = 'aprobado'
-          AND NOT EXISTS (SELECT 1 FROM certificado c WHERE c.id_inscripcion = i.id_inscripcion)
+          AND NOT EXISTS (SELECT 1 FROM certificados c WHERE c.id_inscripcion = i.id_inscripcion)
     `, [req.params.id]);
 
     // 4. Generar registros de Certificados
     let generated = 0;
+    const crypto = require('crypto');
+
     for (const insc of inscripciones) {
-      const code = uuidv4();
+      // Generar código único: CURSO-CEDULA-RANDOM
+      const code = crypto.randomBytes(8).toString('hex').toUpperCase();
       await pool.query(
-        'INSERT INTO certificado (id_inscripcion, codigo_verificacion) VALUES (?, ?)',
+        'INSERT INTO certificados (id_inscripcion, codigo_verificacion, fecha_emision) VALUES (?, ?, NOW())',
         [insc.id_inscripcion, code]
       );
       generated++;

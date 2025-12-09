@@ -74,11 +74,11 @@ export default function CursosCatalogoPage() {
   }, [q, horasFiltro, tipoFiltro, publicoFiltro, user]);
 
   const openModal = (curso) => {
-    if (user.rol !== 'usuario') {
+    if (user.rol !== 'usuario' && user.rol !== 'estudiante') {
       setFeedback({
         type: 'error',
         title: 'Acceso restringido',
-        message: 'Solo los usuarios con rol "usuario" pueden inscribirse desde el catálogo.'
+        message: 'Solo los estudiantes pueden inscribirse desde el catálogo.'
       });
       return;
     }

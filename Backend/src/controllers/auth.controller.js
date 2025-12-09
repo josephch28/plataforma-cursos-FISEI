@@ -1,7 +1,7 @@
 // Backend/src/controllers/auth.controller.js
 const pool = require('../db');
-const bcrypt = require('bcrypt'); // ¡NUEVO! Importar bcrypt
-const jwt = require('jsonwebtoken'); // ¡NUEVO! Importar jsonwebtoken
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
 exports.login = async (req, res) => {
   try {
@@ -18,33 +18,30 @@ exports.login = async (req, res) => {
     );
     
     if (!rows.length) {
-      // Usamos un mensaje genérico por seguridad
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
     
     const user = rows[0];
     
-    // 2. ¡NUEVO! Comparar contraseña con bcrypt
+    // 2. Comparar contraseña
     const isValid = await bcrypt.compare(password, user.password);
     
     if (!isValid) {
       return res.status(401).json({ message: 'Credenciales inválidas' });
     }
     
-    // 3. ¡NUEVO! Crear el "payload" del token
+    // 3. Crear payload
     const payload = {
       cedula: user.cedula,
       rol: user.rol,
       nombre: user.nombre
     };
     
-    // 4. ¡NUEVO! Firmar el token
-    // Asegúrate de tener JWT_SECRET en tu archivo .env
-    const token = jwt.sign(payload, process.env.JWT_SECRET || 'tu_secreto_por_defecto_MUY_SEGURO', {
-      expiresIn: '1d' // El token expira en 1 día
+    // 4. Firmar token
+    const token = jwt.sign(payload, process.env.JWT_SECRET || 'secret', {
+      expiresIn: '1d'
     });
 
-    // 5. Enviar el token y los datos del usuario al frontend
     res.json({
       token: token,
       user: {
@@ -61,5 +58,46 @@ exports.login = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Error al iniciar sesión' });
+  }
+};
+
+// 👇 CAMBIO IMPORTANTE: Usar exports.register en lugar de export const register
+exports.register = async (req, res) => {
+  const { 
+    cedula, nombre, apellido, email, password, 
+    es_estudiante_uta, es_personal_uta 
+  } = req.body;
+
+  try {
+    // 1. Verificar si ya existe
+    const [userFound] = await pool.query('SELECT * FROM usuario WHERE email = ? OR cedula = ?', [email, cedula]);
+    if (userFound.length > 0) {
+      return res.status(400).json({ message: 'El correo o la cédula ya están registrados' });
+    }
+
+    // 2. Encriptar contraseña
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    // 3. Insertar en BD
+    // CORRECCIÓN: Cambiamos 'estado' por 'activo' y el valor 'activo' por 1
+    const [result] = await pool.query(
+      'INSERT INTO usuario (cedula, nombre, apellido, email, password, rol, es_estudiante_uta, es_personal_uta, activo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [cedula, nombre, apellido, email, passwordHash, 'estudiante', es_estudiante_uta ? 1 : 0, es_personal_uta ? 1 : 0, 1]
+    );
+
+    res.status(201).json({
+      id: result.insertId,
+      cedula,
+      nombre,
+      apellido,
+      email,
+      rol: 'estudiante',
+      message: 'Usuario registrado exitosamente'
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Error interno del servidor al registrar' });
   }
 };

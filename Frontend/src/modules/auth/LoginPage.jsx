@@ -23,7 +23,7 @@ export default function LoginPage() {
           navigate('/cursos');
           break;
         case 'usuario':
-          navigate('/catalogo'); 
+          navigate('/catalogo');
           break;
         default:
           break;
@@ -38,7 +38,7 @@ export default function LoginPage() {
 
     try {
       const userData = await login(email, password);
-      
+
       // Redirigir según el rol
       switch (userData.rol) {
         case 'admin':
@@ -47,15 +47,19 @@ export default function LoginPage() {
         case 'responsable':
           navigate('/cursos');
           break;
+
+        // 👇 AGREGA ESTE CASO:
+        case 'estudiante':
         case 'usuario':
-          // 🆕 Redirigir al catálogo en lugar de bloquear
-          navigate('/catalogo'); 
+          navigate('/catalogo');
           break;
+
         case 'develop':
           navigate('/dashboard');
           break;
         default:
-          navigate('/cursos');
+          // Cambia el default para que no mande a un lugar prohibido
+          navigate('/catalogo');
       }
     } catch (err) {
       setError(err.message || 'Error al iniciar sesión');

@@ -1,4 +1,12 @@
 // src/services/api.js
+import axios from 'axios';
+
+const API_URL = 'http://localhost:3000/api';
+
+const api = axios.create({
+  baseURL: API_URL,
+  headers: { 'Content-Type': 'application/json' },
+});
 
 // Headers de autenticación (token + cabeceras útiles para backend)
 const getAuthHeaders = () => {
@@ -188,6 +196,26 @@ export const API = {
   async getSolicitudesStats() {
     const res = await fetch(`/api/solicitudes/stats`, { headers: getPublicHeaders() });
     return await handleResponse(res);
+  },
+
+
+  register: async (userData) => {
+    try {
+      const response = await api.post('/auth/register', userData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Error de conexión' };
+    }
+  },
+  
+  // Manten tu función de login existente
+  login: async (email, password) => {
+    const response = await api.post('/auth/login', { email, password });
+    if (response.data.token) {
+      localStorage.setItem('token', response.data.token);
+      localStorage.setItem('user', JSON.stringify(response.data.usuario));
+    }
+    return response.data.usuario;
   },
 
   // Workflow Actions
